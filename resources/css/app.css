@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@source "../js/**/*.{js,jsx,ts,tsx}";
+@source "../views/**/*.blade.php";
+
+:root {
+    --background: #f7fbf8;
+    --foreground: #18311c;
+    --surface: #ffffff;
+    --surface-foreground: #18311c;
+    --muted: #edf7f0;
+    --muted-foreground: #5a6a57;
+    --border: #d3e7d7;
+    --brand: #345c32;
+    --brand-hover: #284728;
+    --brand-foreground: #ffffff;
+    --brand-strong: #9cac54;
+    --brand-soft: #a7f0dd;
+    --brand-muted: #97cd97;
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-surface: var(--surface);
+    --color-surface-foreground: var(--surface-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-brand: var(--brand);
+    --color-brand-hover: var(--brand-hover);
+    --color-brand-foreground: var(--brand-foreground);
+    --color-brand-strong: var(--brand-strong);
+    --color-brand-soft: var(--brand-soft);
+    --color-brand-muted: var(--brand-muted);
+    --font-sans: Arial, Helvetica, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+body {
+    background:
+        radial-gradient(circle at top left, rgb(167 240 221 / 35%), transparent 32%),
+        radial-gradient(circle at top right, rgb(156 172 84 / 16%), transparent 30%),
+        linear-gradient(180deg, #f7fbf8 0%, #fff 100%);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+}
