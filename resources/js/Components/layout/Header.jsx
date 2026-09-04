@@ -46,7 +46,7 @@ export default function Header() {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/70 bg-white/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/70 bg-white/90 backdrop-blur-xl">
       <div className="border-b border-brand-strong/20 bg-brand-soft">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-2 text-[13px] text-slate-600 sm:px-6 lg:px-8">
           <nav className="flex flex-wrap items-center gap-x-6 gap-y-1">

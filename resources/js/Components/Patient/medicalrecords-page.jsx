@@ -138,6 +138,25 @@ export default function MedicalRecordsPage({
                         {formatCurrency(item.amountCents, item.currency)}
                       </p>
                     </div>
+                    <div className="mt-3 grid gap-2 border-t border-rose-200/70 pt-3 text-xs text-rose-900 sm:grid-cols-2 lg:grid-cols-4">
+                      <InvoiceDetail label="Payment status" value={item.status} />
+                      <InvoiceDetail label="Method" value={item.paymentMethod} />
+                      <InvoiceDetail label="Provider" value={item.provider} />
+                      <InvoiceDetail
+                        label="Paid amount"
+                        value={formatCurrency(item.paidAmountCents, item.currency)}
+                      />
+                      <InvoiceDetail
+                        label="Due amount"
+                        value={formatCurrency(item.dueAmountCents, item.currency)}
+                      />
+                      <InvoiceDetail label="Paid at" value={formatDateTime(item.paidAt)} />
+                      <InvoiceDetail
+                        label="Gateway transaction"
+                        value={item.gatewayTransactionId}
+                      />
+                      <InvoiceDetail label="Appointment" value={item.appointmentNo} />
+                    </div>
                   </div>
                 ) : null}
               </article>
@@ -185,6 +204,30 @@ function Badge({ children, tone }) {
       {children ?? "Record"}
     </span>
   );
+}
+
+function InvoiceDetail({ label, value }) {
+  if (!value) {
+    return null;
+  }
+
+  return (
+    <div>
+      <span className="block text-[10px] font-semibold uppercase tracking-wide text-rose-700/70">
+        {label}
+      </span>
+      <span className="mt-0.5 block truncate font-semibold">{value}</span>
+    </div>
+  );
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
 }
 
 function getRecordMeta(item, recordCategory) {

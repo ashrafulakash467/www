@@ -1,4 +1,4 @@
-// import HeroCard from "@/Components/layout/home-care/Hero-card";
+import HeroCard from "@/Components/layout/home-care/Hero-card";
 
 export default function Home({ doctors = [] }) {
   return (

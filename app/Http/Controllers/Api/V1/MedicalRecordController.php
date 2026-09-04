@@ -83,8 +83,24 @@ class MedicalRecordController extends Controller
             ->map(fn (MedicalRecord $record) => $this->formatMedicalNote($record))
             ->values();
 
-        $uploads = $medicalRecords
+        $attachments = $medicalRecords
             ->flatMap(fn (MedicalRecord $record) => $this->formatAttachments($record))
+            ->values();
+
+        $diagnostics = $attachments
+            ->filter(fn (array $attachment) => in_array(
+                strtolower((string) ($attachment['documentType'] ?? '')),
+                ['diagnostic', 'diagnostics', 'report', 'pdf'],
+                true,
+            ))
+            ->values();
+
+        $uploads = $attachments
+            ->reject(fn (array $attachment) => in_array(
+                strtolower((string) ($attachment['documentType'] ?? '')),
+                ['diagnostic', 'diagnostics', 'report', 'pdf'],
+                true,
+            ))
             ->values();
 
         $invoiceQuery = Payment::query()->with([
@@ -118,7 +134,7 @@ class MedicalRecordController extends Controller
         return response()->json([
             'records' => [
                 'prescriptions' => $prescriptions,
-                'diagnostics' => [],
+                'diagnostics' => $diagnostics,
                 'notes' => $notes,
                 'uploads' => $uploads,
                 'invoices' => $invoices,
@@ -476,7 +492,7 @@ class MedicalRecordController extends Controller
 
     private function formatInvoice(Payment $payment): array
     {
-        $amount = (float) ($payment->paid_amount ?? $payment->total_amount ?? $payment->amount ?? 0);
+        $amount = (float) ($payment->total_amount ?? $payment->amount ?? 0);
 
         return [
             'id' => (string) $payment->id,
@@ -491,9 +507,20 @@ class MedicalRecordController extends Controller
             'paymentMethod' => $payment->method ?? 'cash',
             'fileUrl' => null,
             'documentType' => 'invoice',
-            'amountCents' => (int) round($amount * 100),
             'currency' => $payment->currency ?? 'BDT',
-            'appointmentId' => $payment->appointment_id ? (string) $payment->appointment_id : null,
+            // Payment-details routes identify appointments by appointment_no,
+            // not by the internal numeric appointment primary key.
+            'appointmentId' => $payment->appointment?->appointment_no,
+            'appointmentNo' => $payment->appointment?->appointment_no,
+            'provider' => $payment->provider,
+            'amountCents' => (int) round($amount * 100),
+            'discountAmountCents' => (int) round(((float) ($payment->discount_amount ?? 0)) * 100),
+            'taxAmountCents' => (int) round(((float) ($payment->tax_amount ?? 0)) * 100),
+            'totalAmountCents' => (int) round(((float) ($payment->total_amount ?? 0)) * 100),
+            'paidAmountCents' => (int) round(((float) ($payment->paid_amount ?? 0)) * 100),
+            'dueAmountCents' => (int) round(((float) ($payment->due_amount ?? 0)) * 100),
+            'paidAt' => $payment->paid_at?->toISOString(),
+            'gatewayTransactionId' => $payment->gateway_transaction_id,
             'source' => 'payment',
         ];
     }
