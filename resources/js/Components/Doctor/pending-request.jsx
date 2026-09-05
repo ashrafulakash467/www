@@ -20,6 +20,7 @@ export default function PendingRequestPage({
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [loadingAction, setLoadingAction] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (appointments.length === 0) {
@@ -39,6 +40,18 @@ export default function PendingRequestPage({
     appointments.find(
       (appointment) => appointment.id === selectedAppointmentId,
     ) ?? null;
+
+  function openDetails(appointmentId) {
+    onSelectAppointment(appointmentId);
+    setIsDetailsOpen(true);
+    setActionMessage("");
+    setActionError("");
+  }
+
+  function closeDetails() {
+    if (loadingAction) return;
+    setIsDetailsOpen(false);
+  }
 
   async function handleAction(appointmentId, decision) {
     const token = getStoredToken("doctor");
@@ -110,8 +123,7 @@ export default function PendingRequestPage({
         </p>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
@@ -150,7 +162,7 @@ export default function PendingRequestPage({
                   >
                     <button
                       type="button"
-                      onClick={() => onSelectAppointment(appointment.id)}
+                      onClick={() => openDetails(appointment.id)}
                       className="w-full text-left"
                     >
                       <div className="flex gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -264,38 +276,70 @@ export default function PendingRequestPage({
               })}
             </div>
           )}
-        </section>
+      </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          {selectedAppointment ? (
-            <>
-              <div className="flex flex-col gap-3 border-b border-slate-100 pb-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg font-bold text-slate-900">
-                    {selectedAppointment.patient?.name ||
-                      selectedAppointment.patientName ||
-                      "Patient"}
-                  </h2>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusTone(
-                      selectedAppointment.status,
-                    )}`}
-                  >
-                    {selectedAppointment.status || "pending"}
-                  </span>
-                </div>
-                <p className="text-sm text-slate-500">
-                  {selectedAppointment.doctor?.specialty || "Consultation"}
+      {isDetailsOpen && selectedAppointment ? (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-[2px]"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeDetails();
+          }}
+        >
+          <aside
+            className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col overflow-y-auto bg-white p-6 shadow-2xl sm:p-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pending-request-details-title"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Request Details
                 </p>
+                <h2
+                  id="pending-request-details-title"
+                  className="mt-1 text-xl font-bold text-slate-900"
+                >
+                  {selectedAppointment.patient?.name ||
+                    selectedAppointment.patientName ||
+                    "Patient"}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeDetails}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                aria-label="Close request details"
+              >
+                X
+              </button>
+            </div>
+
+            <div className="flex-1 pt-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusTone(
+                    selectedAppointment.status,
+                  )}`}
+                >
+                  {selectedAppointment.status || "pending"}
+                </span>
+                <span className="text-sm text-slate-500">
+                  {selectedAppointment.doctor?.specialty || "Consultation"}
+                </span>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <InfoCard
                   title="Appointment Date"
                   value={selectedAppointment.appointmentDate}
                 />
                 <InfoCard title="Slot Time" value={selectedAppointment.slotTime} />
-                <InfoCard title="Time Left" value={selectedTimeLeft(now, selectedAppointment)} />
+                <InfoCard
+                  title="Time Left"
+                  value={selectedTimeLeft(now, selectedAppointment)}
+                />
                 <InfoCard
                   title="Payment"
                   value={`${selectedAppointment.paymentStatus || "unpaid"} - ${formatCurrency(
@@ -307,9 +351,9 @@ export default function PendingRequestPage({
 
               <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Request Details
+                  Request Information
                 </p>
-                <div className="mt-2 space-y-1 text-sm text-slate-700">
+                <div className="mt-2 space-y-2 text-sm text-slate-700">
                   <p>
                     <span className="font-semibold text-slate-900">Reason:</span>{" "}
                     {selectedAppointment.reason || "Not provided"}
@@ -332,66 +376,43 @@ export default function PendingRequestPage({
                   </p>
                 </div>
               </div>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleAction(selectedAppointment.id, "accepted")
-                  }
-                  disabled={loadingAction?.appointmentId === selectedAppointment.id}
-                  className="rounded-md border border-emerald-200 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loadingAction?.appointmentId === selectedAppointment.id &&
-                  loadingAction?.decision === "accepted"
-                    ? "Accepting..."
-                    : "Accept request"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleAction(selectedAppointment.id, "rejected")
-                  }
-                  disabled={loadingAction?.appointmentId === selectedAppointment.id}
-                  className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loadingAction?.appointmentId === selectedAppointment.id &&
-                  loadingAction?.decision === "rejected"
-                    ? "Rejecting..."
-                    : "Reject request"}
-                </button>
-                {!selectedAppointment.changeRequest ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleAction(selectedAppointment.id, "reschedule")
-                    }
-                    disabled={loadingAction?.appointmentId === selectedAppointment.id}
-                    className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {loadingAction?.appointmentId === selectedAppointment.id &&
-                    loadingAction?.decision === "reschedule"
-                      ? "Sending..."
-                      : "Move to reschedule"}
-                  </button>
-                ) : null}
-              </div>
-            </>
-          ) : (
-            <div className="flex min-h-115 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center">
-              <div className="max-w-sm space-y-2">
-                <h3 className="text-lg font-bold text-slate-900">
-                  Open a pending request
-                </h3>
-                <p className="text-sm text-slate-500">
-                  Select a patient from the left to review the booking details
-                  and process the request.
-                </p>
-              </div>
             </div>
-          )}
-        </section>
-      </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">
+              <button
+                type="button"
+                onClick={closeDetails}
+                disabled={Boolean(loadingAction)}
+                className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAction(selectedAppointment.id, "rejected")}
+                disabled={loadingAction?.appointmentId === selectedAppointment.id}
+                className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingAction?.appointmentId === selectedAppointment.id &&
+                loadingAction?.decision === "rejected"
+                  ? "Rejecting..."
+                  : "Reject"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAction(selectedAppointment.id, "accepted")}
+                disabled={loadingAction?.appointmentId === selectedAppointment.id}
+                className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingAction?.appointmentId === selectedAppointment.id &&
+                loadingAction?.decision === "accepted"
+                  ? "Saving..."
+                  : "Save"}
+              </button>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }

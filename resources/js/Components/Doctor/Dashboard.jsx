@@ -10,7 +10,7 @@ import MyAppointmentPage from "./myappointment-page";
 import TodayAppointments from "./todayAppointments";
 import UpcomingAppointment from "./upcomingAppointment";
 import PendingRequestPage from "./pending-request";
-import MedicalRecordsPage from "./medicalrecords-page";
+import PatientRecordsPage from "./patientRecords";
 import UploadDocumentPage from "./upload-document";
 import ScheduleManagementPage from "./schedule-management-page";
 import { apiFetch, clearAllAuthSessions, getStoredToken, getStoredUser } from "@/utils/api";
@@ -423,7 +423,7 @@ export default function DoctorDashboardClient() {
         )}
 
         {activeTab === "records" && (
-          <MedicalRecordsPage
+          <PatientRecordsPage
             title={
               recordCategory === "prescriptions"
                 ? "Prescriptions"

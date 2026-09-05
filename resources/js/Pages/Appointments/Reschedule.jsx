@@ -205,7 +205,7 @@ function RescheduleAppointmentContent() {
               className="rounded-full px-2 py-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
               aria-label="Dismiss notification"
             >
-              ÃƒÆ’Ã¢â‚¬â€
+             Testing
             </button>
           </div>
         </div>

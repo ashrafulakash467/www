@@ -371,7 +371,7 @@ const visibleSlots = activeAppointmentDate
               className="rounded-full px-2 py-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
               aria-label="Dismiss notification"
             >
-              ÃƒÆ’Ã¢â‚¬â€
+              i
             </button>
           </div>
         </div>
@@ -430,7 +430,7 @@ const visibleSlots = activeAppointmentDate
 
           </div>
 
-               
+
                   {selectedDoctor ? (
                     <div className="mt-6">
                       <DoctorCardDetails doctor={selectedDoctor} />
@@ -440,7 +440,7 @@ const visibleSlots = activeAppointmentDate
                       Select a doctor to see their details.
                     </p>
                   )}
-                
+
 
 
           <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
