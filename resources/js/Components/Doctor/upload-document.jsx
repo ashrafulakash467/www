@@ -10,6 +10,8 @@ const documentCategories = [
   { title: "Invoice", type: "invoice" },
 ];
 
+const MAX_DOCUMENT_FILE_SIZE = 20 * 1024 * 1024;
+
 export default function UploadDocumentPage({
   appointments = [],
   selectedAppointmentId,
@@ -117,6 +119,11 @@ export default function UploadDocumentPage({
 
     if (!title.trim()) {
       setError("Add a document title first.");
+      return;
+    }
+
+    if (documentFile?.size > MAX_DOCUMENT_FILE_SIZE) {
+      setError("The document must be 20 MB or smaller.");
       return;
     }
 
