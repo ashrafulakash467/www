@@ -257,23 +257,48 @@ function openDocument(item) {
     return;
   }
 
-  if (item.fileUrl) {
-    window.open(item.fileUrl, "_blank", "noopener,noreferrer");
+  const documentUrl = resolveDocumentUrl(item);
+
+  if (documentUrl) {
+    window.open(documentUrl, "_blank", "noopener,noreferrer");
     return;
   }
 
   openPrintableWindow(item);
 }
 
-function downloadDocument(item) {
+async function downloadDocument(item) {
   if (typeof window === "undefined") {
     return;
   }
 
-  if (item.fileUrl) {
+  const documentUrl = resolveDocumentUrl(item);
+
+  if (documentUrl) {
+    const downloadName = getDocumentFilename(item, documentUrl);
+
+    try {
+      const response = await fetch(documentUrl, { credentials: "same-origin" });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = downloadName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        return;
+      }
+    } catch {
+      // Fall back to a direct navigation download below.
+    }
+
     const link = document.createElement("a");
-    link.href = item.fileUrl;
-    link.download = item.fileName || `${slugify(item.title || "document")}.pdf`;
+    link.href = documentUrl;
+    link.download = downloadName;
     link.rel = "noopener noreferrer";
     document.body.appendChild(link);
     link.click();
@@ -305,14 +330,15 @@ async function shareDocument(item) {
     return;
   }
 
-  const shareText = `${item.title}${item.fileUrl ? ` - ${item.fileUrl}` : ""}`;
+  const documentUrl = resolveDocumentUrl(item);
+  const shareText = documentUrl ? `${item.title} - ${documentUrl}` : item.title;
 
   if (navigator.share) {
     try {
       await navigator.share({
         title: item.title || "Medical record",
         text: shareText,
-        url: item.fileUrl || window.location.href,
+        url: documentUrl || window.location.href,
       });
       return;
     } catch {
@@ -326,24 +352,21 @@ async function shareDocument(item) {
 }
 
 function openPrintableWindow(item, shouldPrint = false) {
-  const popup = window.open("", "_blank", "noopener,noreferrer,width=960,height=1100");
+  const html = buildPrintableMarkup(item, shouldPrint);
+  const blobUrl = URL.createObjectURL(
+    new Blob([html], { type: "text/html;charset=utf-8" }),
+  );
+  const popup = window.open(blobUrl, "_blank", "noopener,noreferrer,width=960,height=1100");
 
-  if (!popup) {
-    return;
-  }
-
-  const html = buildPrintableMarkup(item);
-  popup.document.open();
-  popup.document.write(html);
-  popup.document.close();
-
-  if (shouldPrint) {
+  if (popup) {
+    popup.opener = null;
     popup.focus();
-    window.setTimeout(() => popup.print(), 300);
   }
+
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 }
 
-function buildPrintableMarkup(item) {
+function buildPrintableMarkup(item, shouldPrint = false) {
   const amount = item.amountCents ? formatCurrency(item.amountCents, item.currency) : "";
   const docType = String(item.documentType || "record").toUpperCase();
 
@@ -386,6 +409,14 @@ function buildPrintableMarkup(item) {
     </div>
     <div class="footer">Generated from the HealthPortal medical records system.</div>
   </div>
+  <script>
+    window.addEventListener("load", function () {
+      ${shouldPrint ? 'window.focus(); window.setTimeout(function () { window.print(); }, 250);' : ""}
+    });
+    window.addEventListener("afterprint", function () {
+      window.close();
+    });
+  </script>
 </body>
 </html>`;
 }
@@ -410,6 +441,40 @@ function slugify(value) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "document";
+}
+
+function resolveDocumentUrl(item) {
+  const rawUrl = item.fileUrl || item.documentUrl || item.url || item.path;
+
+  if (!rawUrl || rawUrl === "#") {
+    return "";
+  }
+
+  try {
+    return new URL(rawUrl, window.location.href).href;
+  } catch {
+    return String(rawUrl);
+  }
+}
+
+function getDocumentFilename(item, documentUrl) {
+  if (item.fileName) {
+    return item.fileName;
+  }
+
+  if (documentUrl) {
+    try {
+      const pathname = new URL(documentUrl, window.location.href).pathname;
+      const name = pathname.split("/").filter(Boolean).pop();
+      if (name) {
+        return name;
+      }
+    } catch {
+      // Ignore malformed URLs and fall back to a generated name.
+    }
+  }
+
+  return `${slugify(item.title || "document")}.pdf`;
 }
 
 function escapeHtml(value) {

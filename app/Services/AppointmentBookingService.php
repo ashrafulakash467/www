@@ -20,8 +20,15 @@ class AppointmentBookingService
         return DB::transaction(function () use ($user, $data): Appointment {
             $patient = Patient::query()->where('user_id', $user->id)->first();
             if (! $patient) {
-                throw ValidationException::withMessages([
-                    'patient' => ['Patient profile not found.'],
+                // Some legacy/demo users were created without their patient row.
+                // Restore the profile from the authenticated account before booking.
+                $patient = Patient::create([
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'country' => 'Bangladesh',
+                    'status' => 'active',
                 ]);
             }
 

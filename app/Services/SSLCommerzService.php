@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Payment;
+
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -257,5 +259,26 @@ class SSLCommerzService
     public function isConfigured(): bool
     {
         return $this->storeId !== '' && $this->storePassword !== '';
+    }
+
+    public function refund(Payment $payment, string $reference, float $amount, string $reason): array
+    {
+        return $this->refundRequest(['refund_ref_id' => $reference, 'bank_tran_id' => $payment->gateway_transaction_id, 'refund_amount' => number_format($amount, 2, '.', ''), 'refund_remarks' => $reason, 'refe_id' => $payment->transaction_no]);
+    }
+
+    public function refundStatus(string $reference): array
+    {
+        return $this->refundRequest(['refund_ref_id' => $reference]);
+    }
+
+    private function refundRequest(array $data): array
+    {
+        if (!$this->isConfigured()) return ['success' => false, 'status' => 'failed', 'message' => 'SSLCOMMERZ credentials are not configured.'];
+        try {
+            $response = Http::asForm()->timeout(30)->withOptions(['verify' => $this->caBundle()])->post($this->baseUrl.config('sslcommerz.refund_path'), array_merge(['store_id' => $this->storeId, 'store_passwd' => $this->storePassword, 'format' => 'json'], $data));
+            $result = $response->json() ?: [];
+            $status = strtolower((string) ($result['status'] ?? $result['refund_status'] ?? 'processing'));
+            return ['success' => $response->successful() && !in_array($status, ['failed', 'cancelled', 'error'], true), 'status' => in_array($status, ['refunded', 'success', 'successful', 'approved'], true) ? 'refunded' : $status, 'data' => $result];
+        } catch (\Throwable $e) { Log::error('SSLCOMMERZ refund request failed', ['message' => $e->getMessage()]); return ['success' => false, 'status' => 'failed']; }
     }
 }

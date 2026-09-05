@@ -13,6 +13,7 @@ use App\Models\Patient;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\AppointmentBookingService;
+use App\Services\RefundService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 
 class AppointmentController extends Controller
 {
-    public function __construct(private readonly AppointmentBookingService $bookingService) {}
+    public function __construct(private readonly AppointmentBookingService $bookingService, private readonly RefundService $refundService) {}
 
     public function my(Request $request): JsonResponse
     {
@@ -45,7 +46,12 @@ class AppointmentController extends Controller
             'success' => true,
             'message' => 'Appointments retrieved successfully.',
             'appointments' => $appointments->getCollection()
-                ->map(fn (Appointment $appointment) => $this->formatAppointment($appointment))
+                ->map(function (Appointment $appointment) {
+                    if ($appointment->payment?->refund_status === 'processing') {
+                        $appointment->setRelation('payment', $this->refundService->check($appointment->payment));
+                    }
+                    return $this->formatAppointment($appointment);
+                })
                 ->values(),
             'total' => $appointments->total(),
             'pagination' => [
@@ -220,15 +226,20 @@ class AppointmentController extends Controller
 
         $this->releaseSlotIfNeeded($appointment);
 
+        $payment = $this->refundService->cancelAndRefund($appointment, $data['reason']);
+
         $appointment->forceFill([
             'status' => 'cancelled',
             'cancel_reason' => $data['reason'],
+            'cancelled_by' => 'patient',
+            'cancelled_at' => now(),
         ])->save();
 
         return response()->json([
             'message' => 'Appointment cancelled successfully.',
             'appointmentId' => $data['appointmentId'],
             'reason' => $data['reason'],
+            'refund' => $payment ? $this->formatRefund($payment) : null,
         ]);
     }
 
@@ -490,8 +501,11 @@ class AppointmentController extends Controller
             if ($changeRequest['type'] === 'cancellation') {
                 if ($data['decision'] === 'accepted') {
                     $this->releaseSlotIfNeeded($appointment);
+                    $payment = $this->refundService->cancelAndRefund($appointment, $changeRequest['reason'] ?? $appointment->cancel_reason ?? 'Patient cancellation', 'patient');
                     $appointment->forceFill([
                         'status' => 'cancelled',
+                        'cancelled_by' => 'doctor',
+                        'cancelled_at' => now(),
                         'meta' => $meta,
                     ])->save();
                     $message = 'Patient cancellation request accepted.';
@@ -509,6 +523,7 @@ class AppointmentController extends Controller
                 return response()->json([
                     'message' => $message,
                     'appointment' => $this->formatAppointment($appointment),
+                    'refund' => $payment ? $this->formatRefund($payment) : null,
                 ]);
             }
 
@@ -567,11 +582,14 @@ class AppointmentController extends Controller
             $updates['rescheduled_at'] = null;
         } elseif ($decision === 'rejected') {
             $this->releaseSlotIfNeeded($appointment);
+            $this->refundService->cancelAndRefund($appointment, $data['note'] ?? 'Rejected by doctor', 'doctor');
             $updates['status'] = 'cancelled';
             $updates['rejected_at'] = now();
             $updates['accepted_at'] = null;
             $updates['rescheduled_at'] = null;
             $updates['cancel_reason'] = 'Rejected by doctor';
+            $updates['cancelled_by'] = 'doctor';
+            $updates['cancelled_at'] = now();
         } else {
             $this->releaseSlotIfNeeded($appointment);
             $updates['status'] = 'reschedule_requested';
@@ -748,6 +766,7 @@ class AppointmentController extends Controller
             'isChangeRequestPending' => $hasPendingChangeRequest,
             'changeRequest' => $hasPendingChangeRequest ? $changeRequest : null,
             'cancellationReason' => $appointment->cancel_reason,
+            'refund' => $payment ? $this->formatRefund($payment) : null,
         ], $overrides);
     }
 
@@ -787,22 +806,34 @@ class AppointmentController extends Controller
     private function doctorImageUrl(?string $imagePath): string
     {
         if (blank($imagePath)) {
-            return '/globe.svg';
+            return '/images/doc1.png';
         }
 
         if (str_starts_with($imagePath, 'http://') || str_starts_with($imagePath, 'https://')) {
             return $imagePath;
         }
 
+        if (str_starts_with($imagePath, '/images/doctors/')) {
+            return $imagePath;
+        }
+
+        if (str_starts_with($imagePath, 'images/doctors/')) {
+            return '/'.$imagePath;
+        }
+
         if (str_starts_with($imagePath, '/')) {
-            return url(ltrim($imagePath, '/'));
+            return $imagePath;
         }
 
         $filename = basename($imagePath);
-        $localPath = dirname(dirname(base_path())).DIRECTORY_SEPARATOR.'Stroage'.DIRECTORY_SEPARATOR.'doctors'.DIRECTORY_SEPARATOR.$filename;
+        $localPath = public_path('images'.DIRECTORY_SEPARATOR.'doctors'.DIRECTORY_SEPARATOR.$filename);
 
         if (is_file($localPath)) {
-            return url('/doctor-images/'.$filename);
+            return '/images/doctors/'.$filename;
+        }
+
+        if (Storage::disk('public')->exists('doctors/'.$filename)) {
+            return url('/api/doctor-images/'.$filename);
         }
 
         return Storage::disk('public')->url($imagePath);
@@ -913,6 +944,21 @@ class AppointmentController extends Controller
         ];
 
         return count(array_intersect($completedStatuses, $paymentStatuses)) > 0;
+    }
+
+    private function formatRefund(Payment $payment): ?array
+    {
+        if ($payment->refund_status === 'not_requested' || $payment->refund_status === null) {
+            return null;
+        }
+
+        return [
+            'amount' => (float) $payment->refund_amount,
+            'status' => $payment->refund_status,
+            'reference' => $payment->refund_ref_id,
+            'requestedAt' => $payment->refund_requested_at?->toISOString(),
+            'processedAt' => $payment->refund_processed_at?->toISOString(),
+        ];
     }
 
     private function formatAdminPatient(Appointment $appointment): array

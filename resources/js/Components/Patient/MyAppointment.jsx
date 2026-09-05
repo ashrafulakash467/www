@@ -449,6 +449,14 @@ export default function MyAppointmentPage({
                         />
                       </div>
 
+                      {appointment.refund ? (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                          <p className="font-semibold">Refund Status: {String(appointment.refund.status).replaceAll('_', ' ')}</p>
+                          {appointment.refund.amount > 0 ? <p className="mt-1">Refund Amount: ৳{Number(appointment.refund.amount).toFixed(2)}</p> : null}
+                          {appointment.refund.reference ? <p className="mt-1 text-xs">Refund Reference: {appointment.refund.reference}</p> : null}
+                        </div>
+                      ) : null}
+
                       <div className="rounded-xl border border-emerald-100 bg-white/80 p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                           Doctor Contact

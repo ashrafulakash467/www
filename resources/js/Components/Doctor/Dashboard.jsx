@@ -7,6 +7,8 @@ import { faArrowUpRightFromSquare, faCalendarDays } from "@fortawesome/free-soli
 import DashboardOverviewPage from "./dashboardoverview-page";
 import DashboardHeader from "@/Components/Dashboard/header";
 import MyAppointmentPage from "./myappointment-page";
+import TodayAppointments from "./todayAppointments";
+import UpcomingAppointment from "./upcomingAppointment";
 import PendingRequestPage from "./pending-request";
 import MedicalRecordsPage from "./medicalrecords-page";
 import UploadDocumentPage from "./upload-document";
@@ -88,11 +90,15 @@ export default function DoctorDashboardClient() {
   const [isDoctorLoading, setIsDoctorLoading] = useState(true);
   const [isAppointmentsLoading, setIsAppointmentsLoading] = useState(true);
   const [isRecordsLoading, setIsRecordsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("healthcare.doctor.activeTab") ?? "dashboard");
   const [recordCategory, setRecordCategory] = useState("diagnostics");
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [records, setRecords] = useState(emptyMedicalRecords());
+
+  useEffect(() => {
+    window.localStorage.setItem("healthcare.doctor.activeTab", activeTab);
+  }, [activeTab]);
 
   function loadAppointments(token = getStoredToken("doctor")) {
     return apiFetch("/appointment/my", {}, token)
@@ -393,26 +399,16 @@ export default function DoctorDashboardClient() {
         )}
 
         {activeTab === "today" && (
-          <MyAppointmentPage
+          <TodayAppointments
             appointments={todayAppointments}
-            selectedAppointmentId={selectedAppointmentId}
-            onSelectAppointment={setSelectedAppointmentId}
-            mode="today"
-            now={now}
-            onMedicalRecordsChanged={loadMedicalRecords}
-            onNavigateTab={handleTabChange}
+            isLoading={isAppointmentsLoading}
           />
         )}
 
         {activeTab === "upcoming" && (
-          <MyAppointmentPage
+          <UpcomingAppointment
             appointments={upcomingAppointments}
-            selectedAppointmentId={selectedAppointmentId}
-            onSelectAppointment={setSelectedAppointmentId}
-            mode="upcoming"
-            now={now}
-            onMedicalRecordsChanged={loadMedicalRecords}
-            onNavigateTab={handleTabChange}
+            isLoading={isAppointmentsLoading}
           />
         )}
 

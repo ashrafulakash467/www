@@ -292,7 +292,7 @@ const visibleSlots = activeAppointmentDate
       return;
     }
 
-    if (!doctorId || !activeAppointmentDate || !activeSlotTime) {
+    if (!/^\d+$/.test(String(doctorId)) || !activeAppointmentDate || !activeSlotTime) {
       setError(
         "Please select a doctor, appointment date, and time slot before booking.",
       );
@@ -316,7 +316,13 @@ const visibleSlots = activeAppointmentDate
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.message ?? "Could not book appointment.");
+        const validationMessage = Object.values(result.errors ?? {})
+          .flat()
+          .find((message) => typeof message === "string");
+        setError(validationMessage ?? result.message ?? "Could not book appointment.");
+        if (String(validationMessage ?? result.message ?? "").toLowerCase().includes("slot")) {
+          setSlotRefreshTick((current) => current + 1);
+        }
         return;
       }
 

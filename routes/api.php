@@ -116,6 +116,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         // SSLCommerz initiation and payment data require authentication.
         Route::get('appointments/{appointmentId}/payment-details', [SslCommerzPaymentController::class, 'paymentDetails']);
+        Route::get('appointments/{appointmentId}/refund-status', [SslCommerzPaymentController::class, 'refundStatus']);
         Route::get('appointments/{appointmentId}/example-hosted-checkout', [SslCommerzPaymentController::class, 'exampleHostedCheckout']);
         Route::post('payments/sslcommerz/initiate', [SslCommerzPaymentController::class, 'initiate']);
 

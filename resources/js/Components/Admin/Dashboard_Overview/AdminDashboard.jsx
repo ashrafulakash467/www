@@ -133,7 +133,7 @@ function getStoredAdminUser() {
 export default function AdminDashboard() {
   const [admin, setAdmin] = useState(() => getStoredAdminUser());
   const [isReady, setIsReady] = useState(false);
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("healthcare.admin.activeTab") ?? "dashboard");
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(appointmentsSeed[0].id);
   const [selectedReportId, setSelectedReportId] = useState(reportsSeed[0].id);
   const [selectedTicketId, setSelectedTicketId] = useState(supportSeed[0].id);
@@ -157,6 +157,10 @@ export default function AdminDashboard() {
   const [appointmentRequestAction, setAppointmentRequestAction] = useState(null);
   const [roles, setRoles] = useState(rolesSeed);
   const [logs, setLogs] = useState(auditSeed);
+
+  useEffect(() => {
+    window.localStorage.setItem("healthcare.admin.activeTab", activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     const storedToken = getStoredToken("admin");

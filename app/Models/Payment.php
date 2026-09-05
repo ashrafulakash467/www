@@ -25,6 +25,8 @@ class Payment extends Model
         'total_amount',
         'paid_amount',
         'due_amount',
+        'refund_amount', 'refund_status', 'refund_ref_id', 'refund_transaction_id',
+        'refund_reason', 'refund_requested_at', 'refund_processed_at', 'refund_response',
         'status',
         'paid_at',
         'meta',
@@ -42,9 +44,13 @@ class Payment extends Model
             'total_amount' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'due_amount' => 'decimal:2',
+            'refund_amount' => 'decimal:2',
             'paid_at' => 'datetime',
             'meta' => 'array',
             'gateway_response' => 'array',
+            'refund_requested_at' => 'datetime',
+            'refund_processed_at' => 'datetime',
+            'refund_response' => 'array',
         ];
     }
 

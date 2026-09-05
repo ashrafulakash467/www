@@ -47,6 +47,16 @@ function PatientDashboardContent({ initialPatient, activeTab }) {
   }, []);
 
   useEffect(() => {
+    const hasRefundActivity = appointments.some(
+      (appointment) => ["cancellation_requested", "cancelled"].includes(appointment.status)
+        && ["processing", "requested"].includes(appointment.refund?.status),
+    );
+    if (!hasRefundActivity) return undefined;
+    const timer = window.setInterval(() => { void loadAppointments(authToken); }, 15000);
+    return () => window.clearInterval(timer);
+  }, [appointments, authToken]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       setNow(Date.now());
     }, 60_000);

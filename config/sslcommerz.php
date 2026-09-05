@@ -7,6 +7,7 @@ return [
 
     'session_path' => '/gwprocess/v4/api.php',
     'validation_path' => '/validator/api/validationserverAPI.php',
+    'refund_path' => '/validator/api/merchantTransIDvalidationAPI.php',
 
     'callback_paths' => [
         'success' => '/api/v1/payments/sslcommerz/success',

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Payment;
 use App\Services\PaymentService;
+use App\Services\RefundService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ use Illuminate\Support\Str;
 
 class SslCommerzPaymentController extends Controller
 {
-    public function __construct(private readonly PaymentService $payments) {}
+    public function __construct(private readonly PaymentService $payments, private readonly RefundService $refunds) {}
 
     /**
      * Create an SSLCommerz session and return its hosted checkout URL.
@@ -167,6 +168,20 @@ class SslCommerzPaymentController extends Controller
             'appointment' => $appointment,
             'payment' => $appointment->payment,
         ]);
+    }
+
+    public function refundStatus(Request $request, string $appointmentId): JsonResponse
+    {
+        $appointment = $this->appointmentForUser($request, $appointmentId);
+        $payment = $appointment->payment;
+        if ($payment) $payment = $this->refunds->check($payment);
+        return response()->json(['success' => true, 'refund' => $payment ? [
+            'amount' => (float) $payment->refund_amount,
+            'status' => $payment->refund_status,
+            'reference' => $payment->refund_ref_id,
+            'requestedAt' => $payment->refund_requested_at?->toISOString(),
+            'processedAt' => $payment->refund_processed_at?->toISOString(),
+        ] : null]);
     }
 
     public function exampleHostedCheckout(Request $request, string $appointmentId): JsonResponse

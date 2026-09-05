@@ -28,6 +28,8 @@ class Appointment extends Model
         'symptoms',
         'doctor_notes',
         'cancel_reason',
+        'cancelled_by',
+        'cancelled_at',
         'accepted_at',
         'rejected_at',
         'rescheduled_at',
@@ -47,6 +49,7 @@ class Appointment extends Model
             'rescheduled_at' => 'datetime',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'cancelled_at' => 'datetime',
             'meta' => 'array',
         ];
     }
