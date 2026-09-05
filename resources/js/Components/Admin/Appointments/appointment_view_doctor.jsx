@@ -76,7 +76,7 @@ export default function AppointmentViewDoctor({ doctors, onSelectDoctor }) {
                   className="appt-print-hidden inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
                 >
                   View patients
-                  <span aria-hidden="true">â†’</span>
+                  <span aria-hidden="true">-</span>
                 </button>
               </div>
             </article>

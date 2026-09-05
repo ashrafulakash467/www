@@ -405,7 +405,13 @@ class AdminController extends Controller
 
     private function formatUserCard(User $user): array
     {
-        $roles = $user->getRoleNames()->values()->all();
+        $legacyRole = strtolower(trim((string) $user->role));
+        $roles = $user->getRoleNames()
+            ->push($legacyRole)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
         $doctor = $user->doctor;
         $patient = $user->patient;
         $primaryRole = $roles[0] ?? $this->inferUserRole($user);
@@ -426,6 +432,10 @@ class AdminController extends Controller
                 'id' => (string) $doctor->id,
                 'specialty' => $doctor->specialty,
                 'licenseNo' => $doctor->license_no,
+                'imagePath' => $doctor->image_path,
+                'imageUrl' => filled($doctor->image_path)
+                    ? $this->doctorImageUrl($doctor->image_path)
+                    : null,
                 'gender' => $doctor->gender,
                 'verificationStatus' => $doctor->verification_status,
                 'status' => $doctor->status,
@@ -476,17 +486,23 @@ class AdminController extends Controller
             return $imagePath;
         }
 
-        if (str_starts_with($imagePath, '/')) {
-            return url(ltrim($imagePath, '/'));
+        $normalizedPath = ltrim($imagePath, '/');
+
+        if (str_starts_with($normalizedPath, 'images/doctors/')) {
+            return url($normalizedPath);
         }
 
-        $filename = basename($imagePath);
-        $localPath = dirname(dirname(base_path())).DIRECTORY_SEPARATOR.'Stroage'.DIRECTORY_SEPARATOR.'doctors'.DIRECTORY_SEPARATOR.$filename;
+        $filename = basename($normalizedPath);
+        $publicPath = public_path('images/doctors/'.$filename);
 
-        if (is_file($localPath)) {
-            return url('/api/doctor-images/'.$filename);
+        if (is_file($publicPath)) {
+            return url('/images/doctors/'.$filename);
         }
 
-        return Storage::disk('public')->url($imagePath);
+        if (Storage::disk('public')->exists('doctors/'.$filename)) {
+            return url('/doctor-images/'.$filename);
+        }
+
+        return url('/images/doctors/'.$filename);
     }
 }

@@ -2,7 +2,7 @@
 
 import Image from "@/Components/Image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DOCTOR_IMAGE_FALLBACK, resolveDoctorImageSrc } from "@/Components/shared/DoctorCard";
+import { resolveDoctorImageSrc } from "@/Components/shared/DoctorCard";
 import { apiFetch, getStoredToken } from "@/utils/api";
 import {
   createDoctorDirectoryChannel,
@@ -17,8 +17,6 @@ const categoryOptions = [
   { value: "patient", label: "Patients" },
   { value: "admin", label: "Admins" },
 ];
-
-const USER_IMAGE_FALLBACK = "/images/male-doctor-smiling-happy-face-260nw-2481032615.jpg";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -43,7 +41,8 @@ export default function UsersPage() {
     setError("");
 
     try {
-      const response = await apiFetch("/admin/users", {}, token);
+      // Load the complete user list so category filters can include older admin and doctor records.
+      const response = await apiFetch("/admin/users?per_page=100", {}, token);
       const result = await response.json();
 
       if (response.ok) {
@@ -343,7 +342,7 @@ export default function UsersPage() {
                   const primaryRole = formatRoleLabel(getPrimaryRole(user));
                   const userInitial = getUserInitial(user.name);
                   const avatarSrc = resolveUserImageSrc(user);
-                  const showAvatarFallback = avatarSrc === USER_IMAGE_FALLBACK;
+                  const showAvatarFallback = !avatarSrc;
 
                   return (
                     <div
@@ -357,15 +356,17 @@ export default function UsersPage() {
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
                           <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-blue-50">
-                            <Image
-                              key={avatarSrc}
-                              src={avatarSrc}
-                              alt={user.name ?? "User"}
-                              fill
-                              className="object-cover"
-                              sizes="44px"
-                              unoptimized
-                            />
+                            {avatarSrc ? (
+                              <Image
+                                key={avatarSrc}
+                                src={avatarSrc}
+                                alt={user.name ?? "User"}
+                                fill
+                                className="object-cover"
+                                sizes="44px"
+                                unoptimized
+                              />
+                            ) : null}
                             {showAvatarFallback ? (
                               <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold text-blue-600">
                                 {userInitial}
@@ -688,19 +689,22 @@ function normalizeRoleNames(roles) {
   }
 
   return roles
-    .map((role) => String(role ?? "").trim().toLowerCase())
+    .map((role) => String(role ?? "").trim().toLowerCase().replace(/[\s_]+/g, "-"))
     .filter(Boolean);
 }
 
 function getUserRoles(user) {
   const roles = normalizeRoleNames(user?.roles);
+  const primaryRole = String(user?.role ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-");
 
-  if (roles.length) {
-    return roles;
+  if (primaryRole && !roles.includes(primaryRole)) {
+    roles.push(primaryRole);
   }
 
-  const primaryRole = String(user?.role ?? "").trim().toLowerCase();
-  return primaryRole ? [primaryRole] : [];
+  return roles;
 }
 
 function getPrimaryRole(user) {
@@ -716,6 +720,10 @@ function matchesCategory(user, category) {
 
   if (category === "all") {
     return true;
+  }
+
+  if (category === "admin") {
+    return roleSet.has("admin") || roleSet.has("super-admin");
   }
 
   return roleSet.has(category);
@@ -837,9 +845,16 @@ function getUserInitial(name) {
 }
 
 function resolveUserImageSrc(user) {
-  const resolvedImage = resolveDoctorImageSrc(user?.doctor ?? user);
+  const imageOwner = user?.doctor ?? user;
+  const hasImage = [
+    imageOwner?.imageUrl,
+    imageOwner?.imagePath,
+    imageOwner?.image_path,
+    imageOwner?.avatar,
+    imageOwner?.image,
+  ].some((value) => typeof value === "string" && value.trim());
 
-  return resolvedImage === DOCTOR_IMAGE_FALLBACK ? USER_IMAGE_FALLBACK : resolvedImage;
+  return hasImage ? resolveDoctorImageSrc(imageOwner) : "";
 }
 
 function SvgIcon({ className = "h-4 w-4", children }) {

@@ -51,8 +51,19 @@ export async function apiFetch(path, options = {}) {
 }
 
 export function getStoredToken(role) {
-    const activeRole = window.__healthcareAuth?.role;
-    return activeRole === role || (activeRole === 'admin' && role === 'super-admin') ? 'session' : '';
+    const activeRole = String(window.__healthcareAuth?.role ?? '').trim().toLowerCase();
+    const requestedRole = String(role ?? '').trim().toLowerCase();
+    const isAdminRole = activeRole === 'admin' || activeRole === 'super-admin';
+
+    if (requestedRole === 'admin' && isAdminRole) {
+        return 'session';
+    }
+
+    if (requestedRole === 'super-admin' && activeRole === 'admin') {
+        return 'session';
+    }
+
+    return activeRole === requestedRole ? 'session' : '';
 }
 
 export function getStoredUser(role) {
