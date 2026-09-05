@@ -306,7 +306,7 @@ export default function SettingsPage() {
         </header>
 
         <div className="space-y-6">
-          <aside className="hidden rounded-[28px] border border-slate-200 bg-white p-5">      
+          <aside className="hidden rounded-[28px] border border-slate-200 bg-white p-5">
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
               <div className="relative flex h-64 items-center justify-center">
@@ -403,7 +403,7 @@ export default function SettingsPage() {
                             : "Click any day on the calendar to add it as an available working date."}
                         </p>
                       </div>
-                      
+
                     </div>
 
                     <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -439,7 +439,7 @@ export default function SettingsPage() {
                             >
                               {formatDateLabel(dateKey)}
                               <span className="text-rose-500" aria-hidden="true">
-                                
+
                               </span>
                             </button>
                           ))}
@@ -514,7 +514,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-               
+
               </SettingsSection>
 
               <SettingsSection

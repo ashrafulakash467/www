@@ -15,19 +15,19 @@ import { Suspense } from "react";
  */
 const STATUS_CONFIG = {
   success: {
-    icon: "Ã¢Å“â€¦",
+    icon: "✅",
     title: "Payment Successful",
     message: "Your payment has been processed successfully. Your appointment is now confirmed.",
     tone: "emerald",
   },
   fail: {
-    icon: "Ã¢ÂÅ’",
+    icon: "❌",
     title: "Payment Failed",
     message: "We could not process your payment. Please try again or contact support.",
     tone: "red",
   },
   cancel: {
-    icon: "Ã¢Å¡Â Ã¯Â¸Â",
+    icon: "⚠️",
     title: "Payment Cancelled",
     message: "Your payment was cancelled. You can try again from your appointments page.",
     tone: "amber",

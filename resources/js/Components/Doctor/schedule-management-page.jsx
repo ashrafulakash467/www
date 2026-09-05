@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
 
@@ -53,6 +53,25 @@ const [schedule, setSchedule] = useState({
 
   const [savedMessage, setSavedMessage] = useState("");
   const [generatedSlots, setGeneratedSlots] = useState([]);
+
+  useEffect(() => {
+    const availability = doctor?.doctor ?? doctor ?? {};
+    const dates = normalizeAvailabilityList(availability.availableDates ?? availability.available_dates)
+      .map(parseDateValue)
+      .filter(Boolean);
+    const slots = normalizeAvailabilityList(availability.availableTimeSlots ?? availability.available_time_slots);
+    const firstSlot = slots[0]?.split("-")[0]?.trim();
+    const lastSlot = slots.at(-1)?.split("-").at(-1)?.trim();
+    setSchedule((current) => ({
+      ...current,
+      workingDates: dates,
+      ...(firstSlot ? { startTime: toTimeInput(firstSlot) } : {}),
+      ...(lastSlot ? { endTime: toTimeInput(lastSlot) } : {}),
+    }));
+    if (dates.length && slots.length) {
+      setGeneratedSlots(dates.flatMap((date) => slots.map((slot) => ({ day: date.toLocaleDateString(), slot }))));
+    }
+  }, [doctor]);
 
   const preview = useMemo(() => {
     const slotDuration = Number(schedule.slotDuration || 0);
@@ -414,16 +433,17 @@ const [schedule, setSchedule] = useState({
                 preview availability.
               </p>
             ) : (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {generatedSlots.slice(0, 12).map((item, index) => (
-                  <div
-                    key={`${item.day}-${item.slot}-${index}`}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    <span className="font-semibold text-slate-900">
-                      {item.day}
-                    </span>{" "}
-                    {item.slot}
+              <div className="mt-3 space-y-4">
+                {Object.entries(groupSlotsByDate(generatedSlots)).map(([date, slots]) => (
+                  <div key={date} className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="text-sm font-bold text-slate-900">{date}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {slots.map((slot) => (
+                        <span key={`${date}-${slot}`} className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+                          {slot}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -445,6 +465,15 @@ function PreviewCard({ label, value, detail }) {
       <p className="mt-1 text-xs text-slate-500">{detail || " "}</p>
     </div>
   );
+}
+
+function groupSlotsByDate(slots) {
+  return slots.reduce((groups, item) => {
+    const date = item.day || "Available date";
+    groups[date] ??= [];
+    if (!groups[date].includes(item.slot)) groups[date].push(item.slot);
+    return groups;
+  }, {});
 }
 
 function workflowDescription(step) {
@@ -480,6 +509,26 @@ function minutesBetween(start, end) {
   const [startHour, startMinute] = start.split(":").map(Number);
   const [endHour, endMinute] = end.split(":").map(Number);
   return endHour * 60 + endMinute - (startHour * 60 + startMinute);
+}
+
+function normalizeAvailabilityList(value) {
+  if (Array.isArray(value)) return value.flatMap((item) => String(item ?? "").split(/[\n,]+/)).map((item) => item.trim()).filter(Boolean);
+  return String(value ?? "").split(/[\n,]+/).map((item) => item.trim()).filter(Boolean);
+}
+
+function parseDateValue(value) {
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function toTimeInput(value) {
+  const match = String(value).trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) return "";
+  let hour = Number(match[1]);
+  if (match[3]?.toUpperCase() === "PM" && hour < 12) hour += 12;
+  if (match[3]?.toUpperCase() === "AM" && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, "0")}:${match[2]}`;
 }
 
 function buildSlotsForDay(startTime, endTime, durationMinutes, breakStart, breakEnd) {
