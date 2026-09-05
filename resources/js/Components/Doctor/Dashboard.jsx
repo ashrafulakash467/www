@@ -68,15 +68,11 @@ function renderDoctorSidebarIcon(item) {
 
 function isDoctorSidebarItemActive(item, activeTab, recordCategory) {
   if (item.key === "records") {
-    return activeTab === "records" && recordCategory !== "prescriptions";
+    return activeTab === "records";
   }
 
   if (item.key === "documents") {
     return activeTab === "documents";
-  }
-
-  if (item.key === "prescriptions") {
-    return activeTab === "records" && recordCategory === "prescriptions";
   }
 
   return activeTab === item.key;
@@ -91,7 +87,7 @@ export default function DoctorDashboardClient() {
   const [isAppointmentsLoading, setIsAppointmentsLoading] = useState(true);
   const [isRecordsLoading, setIsRecordsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("healthcare.doctor.activeTab") ?? "dashboard");
-  const [recordCategory, setRecordCategory] = useState("diagnostics");
+  const [recordCategory, setRecordCategory] = useState("prescriptions");
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [records, setRecords] = useState(emptyMedicalRecords());
@@ -309,7 +305,7 @@ export default function DoctorDashboardClient() {
     }
 
     if (nextTab === "records") {
-      setRecordCategory("diagnostics");
+      setRecordCategory("prescriptions");
       setActiveTab("records");
       return;
     }
