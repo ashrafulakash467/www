@@ -163,9 +163,15 @@ class SslCommerzPaymentController extends Controller
     {
         $appointment = $this->appointmentForUser($request, $appointmentId);
 
+        $appointmentPayload = $appointment->toArray();
+        $appointmentPayload['doctorName'] = $appointment->doctor?->user?->name ?? $appointment->doctor?->name;
+        $appointmentPayload['patientName'] = $appointment->patient?->name ?? $appointment->patient?->user?->name;
+        $appointmentPayload['appointmentDate'] = $appointment->appointment_date?->toDateString();
+        $appointmentPayload['appointmentTime'] = $appointment->start_time;
+
         return response()->json([
             'success' => true,
-            'appointment' => $appointment,
+            'appointment' => $appointmentPayload,
             'payment' => $appointment->payment,
         ]);
     }

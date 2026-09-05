@@ -195,7 +195,7 @@ function EasyCheckoutContent() {
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-              <span className="text-sm">Ã°Å¸â€â€™</span>
+              <span className="text-sm">🔒</span>
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-900">Secure SSLCommerz Hosted Checkout</p>

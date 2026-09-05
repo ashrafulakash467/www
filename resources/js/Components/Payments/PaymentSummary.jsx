@@ -99,14 +99,31 @@ export default function PaymentSummary({
   }, [appointmentId, router, appointmentProp, paymentProp]);
 
   // Derive display values from API data
-  const amount = payment?.amount ?? appointment?.consultationFee ?? 0;
+  const amount = payment?.amount || payment?.total_amount || payment?.paid_amount || appointment?.consultationFee || appointment?.doctor?.consultation_fee || 0;
   const currency = payment?.currency ?? "BDT";
   const status = payment?.status ?? appointment?.paymentStatus ?? "Pending";
-  const doctorName = appointment?.doctor?.name ?? appointment?.doctorName ?? "Ã¢â‚¬â€";
-  const patientName = appointment?.patient?.name ?? appointment?.patientName ?? "Ã¢â‚¬â€";
-  const appointmentDate = appointment?.appointmentDate ?? appointment?.date ?? "Ã¢â‚¬â€";
-  const appointmentTime = appointment?.appointmentTime ?? appointment?.time ?? "Ã¢â‚¬â€";
-  const transactionId = payment?.transactionId ?? payment?.transaction_id ?? "";
+  const doctorName = firstNonEmpty(
+    resolvePersonName(appointment?.doctor),
+    appointment?.doctorName,
+    appointment?.doctor_name,
+    appointment?.doctorName,
+  ) ?? "Not available";
+  const patientName = appointment?.patient?.name
+    ?? appointment?.patient?.user?.name
+    ?? appointment?.patientName
+    ?? "Not available";
+  const appointmentDate = formatAppointmentDate(appointment?.appointmentDate
+    ?? appointment?.appointment_date
+    ?? appointment?.date);
+  const appointmentTime = formatAppointmentTime(appointment?.appointmentTime
+    ?? appointment?.slotTime
+    ?? appointment?.start_time
+    ?? appointment?.time);
+  const transactionId = payment?.transactionId
+    ?? payment?.transaction_id
+    ?? payment?.gateway_transaction_id
+    ?? payment?.transaction_no
+    ?? "";
   const paymentMethod = payment?.method ?? payment?.paymentMethod ?? "";
 
   // Loading state
@@ -171,4 +188,45 @@ function SummaryRow({ label, value }) {
       <span className="text-sm font-semibold text-slate-700">{value}</span>
     </div>
   );
+}
+
+function resolvePersonName(person) {
+  if (!person) return null;
+  if (typeof person === "string") return person.trim() || null;
+  return firstNonEmpty(
+    person.name,
+    person.full_name,
+    person.fullName,
+    person.user?.name,
+    person.user?.full_name,
+    person.user?.fullName,
+    person.user?.username,
+  );
+}
+
+function firstNonEmpty(...values) {
+  return values.find((value) => typeof value === "string" && value.trim() !== "")?.trim() ?? null;
+}
+
+function formatAppointmentDate(value) {
+  if (!value) return "Not available";
+  const raw = String(value);
+  const dateOnly = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (dateOnly) return dateOnly[1];
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? raw : date.toLocaleDateString();
+}
+
+function formatAppointmentTime(value) {
+  if (!value) return "Not available";
+  const raw = String(value).trim();
+  const timeMatch = raw.match(/(?:T|\s)(\d{1,2}):(\d{2})(?::\d{2})?/);
+  const parts = timeMatch ? timeMatch.slice(1) : raw.match(/^(\d{1,2}):(\d{2})/);
+  if (!parts) return raw;
+  const hours = Number(parts[0]);
+  const minutes = parts[1];
+  if (!Number.isFinite(hours)) return raw;
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const displayHour = hours % 12 || 12;
+  return `${displayHour}:${minutes} ${suffix}`;
 }
