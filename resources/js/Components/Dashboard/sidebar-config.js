@@ -6,7 +6,6 @@ export const doctorSidebarItems = [
   { key: "pending", label: "Pending Requests", icon: "clipboard" },
   { key: "records", label: "Patient Records", icon: "records" },
   { key: "documents", label: "Documents", icon: "upload" },
-  { key: "prescriptions", label: "Prescriptions", icon: "records" },
   { key: "schedule", label: "Schedule Management", icon: "stethoscope" },
   { key: "earnings", label: "Earnings", icon: "wallet" },
   { key: "notifications", label: "Notifications", icon: "bell" },
