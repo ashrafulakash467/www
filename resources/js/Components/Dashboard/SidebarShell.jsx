@@ -62,7 +62,7 @@ export default function SidebarShell({
 
   function renderItem(item, depth = 0) {
     const active = getIsActive(item) || hasActiveChild(item);
-    const expanded = expandedKeys.includes(item.key) || hasActiveChild(item);
+    const expanded = expandedKeys.includes(item.key);
 
     return (
       <div key={item.key}>
