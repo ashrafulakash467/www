@@ -27,6 +27,8 @@ export default function AppointmentViewPatient({
 }) {
   const [selectedDate, setSelectedDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [editedPatients, setEditedPatients] = useState({});
 
   const filtered = useMemo(() => {
     return (patients ?? []).filter((patient) => {
@@ -127,17 +129,36 @@ export default function AppointmentViewPatient({
           </p>
         ) : (
           <div className="space-y-4">
-            {filtered.map((patient) => (
-              <PatientRow key={patient.appointmentId ?? patient.patientId} patient={patient} />
-            ))}
+            {filtered.map((patient) => {
+              const patientKey = patient.appointmentId ?? patient.patientId;
+              return (
+              <PatientRow
+                key={patientKey}
+                patient={editedPatients[patientKey] ?? patient}
+                onView={setSelectedPatient}
+              />
+              );
+            })}
           </div>
         )}
       </div>
+
+      {selectedPatient ? (
+        <PatientDetailsDrawer
+          patient={selectedPatient}
+          onClose={() => setSelectedPatient(null)}
+          onSave={(updatedPatient) => {
+            const patientKey = updatedPatient.appointmentId ?? updatedPatient.patientId;
+            setEditedPatients((current) => ({ ...current, [patientKey]: updatedPatient }));
+            setSelectedPatient(updatedPatient);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
-function PatientRow({ patient }) {
+function PatientRow({ patient, onView }) {
   const schedule = [patient.date, patient.time].filter(Boolean).join(" • ");
 
   return (
@@ -161,10 +182,108 @@ function PatientRow({ patient }) {
       </div>
 
       <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-end">
-       <Badge tone={patient.paymentStatus}><spam>Payment :</spam>{patient.paymentStatus}</Badge>
-        <Badge tone={patient.status}><spam>Status :</spam>{patient.status || "Pending"}</Badge>
+        <Badge tone={patient.paymentStatus}><span>Payment :</span>{patient.paymentStatus}</Badge>
+        <Badge tone={patient.status}><span>Status :</span>{patient.status || "Pending"}</Badge>
+        <button
+          type="button"
+          onClick={() => onView(patient)}
+          className="appt-print-hidden inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+        >
+          <Icon name="eye" className="h-4 w-4" />
+          View
+        </button>
       </div>
     </article>
+  );
+}
+
+function PatientDetailsDrawer({ patient, onClose, onSave }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(patient);
+
+  function updateField(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleCancel() {
+    setDraft(patient);
+    setIsEditing(false);
+  }
+
+  function handleSave() {
+    onSave(draft);
+    setIsEditing(false);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-[2px]"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <aside
+        className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col overflow-y-auto bg-white p-6 shadow-2xl sm:p-8"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-patient-details-title"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Patient Appointment</p>
+            <h2 id="admin-patient-details-title" className="mt-1 text-xl font-bold text-slate-900">{draft.name || "Patient"}</h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50" aria-label="Close patient details">X</button>
+        </div>
+
+        <div className="flex-1 space-y-5 pt-5">
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+              <Icon name="download" className="h-4 w-4" />
+              Print
+            </button>
+            {!isEditing ? <button type="button" onClick={() => setIsEditing(true)} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">Edit</button> : null}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <EditableInfo label="Patient name" value={draft.name} editing={isEditing} onChange={(value) => updateField("name", value)} />
+            <EditableInfo label="Patient ID" value={draft.patientId} />
+            <EditableInfo label="Phone" value={draft.phone} editing={isEditing} onChange={(value) => updateField("phone", value)} />
+            <EditableInfo label="Email" value={draft.email} editing={isEditing} onChange={(value) => updateField("email", value)} />
+            <EditableInfo label="Age" value={draft.age != null ? `${draft.age} yrs` : "Not available"} />
+            <EditableInfo label="Gender" value={draft.gender} />
+            <EditableInfo label="Appointment ID" value={draft.appointmentId} />
+            <EditableInfo label="Date" value={draft.date} editing={isEditing} onChange={(value) => updateField("date", value)} type="date" />
+            <EditableInfo label="Time" value={draft.time} editing={isEditing} onChange={(value) => updateField("time", value)} />
+            <EditableInfo label="Consultation type" value={draft.type} editing={isEditing} onChange={(value) => updateField("type", value)} />
+            <EditableInfo label="Payment status" value={draft.paymentStatus} />
+            <EditableInfo label="Status" value={draft.status} />
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Address</p>
+            {isEditing ? <textarea value={draft.address || ""} onChange={(event) => updateField("address", event.target.value)} rows={3} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800" /> : <p className="mt-2 text-sm leading-6 text-slate-700">{draft.address || "Not available"}</p>}
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">
+          {isEditing ? <>
+            <button type="button" onClick={handleCancel} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+            <button type="button" onClick={handleSave} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">Save</button>
+          </> : <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Close</button>}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function EditableInfo({ label, value, editing, onChange, type = "text" }) {
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      {editing ? <input type={type} value={value || ""} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800" /> : <p className="mt-1 text-sm font-medium text-slate-800">{value || "Not available"}</p>}
+    </div>
   );
 }
 
