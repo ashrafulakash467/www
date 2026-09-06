@@ -28,7 +28,7 @@ class AdminPaymentController extends Controller
                 'totalRevenue' => (float) (clone $query)->whereIn('status', $paid)->sum('paid_amount'),
                 'todayRevenue' => (float) (clone $query)->whereIn('status', $paid)->whereDate('paid_at', $today)->sum('paid_amount'),
                 'successfulPayments' => (clone $query)->whereIn('status', $paid)->count(),
-                'pendingPayments' => (clone $query)->whereIn('status', ['pending', 'processing', 'reviewing'])->count(),
+                'pendingPayments' => $this->pendingQuery(clone $query)->count(),
                 'failedPayments' => (clone $query)->whereIn('status', ['failed', 'cancelled', 'refund_failed'])->count(),
                 'refundedAmount' => (float) (clone $query)->sum('refund_amount'),
                 'netRevenue' => (float) (clone $query)->whereIn('status', $paid)->sum(DB::raw('paid_amount - refund_amount')),
@@ -36,8 +36,8 @@ class AdminPaymentController extends Controller
                 'statusDistribution' => $this->distribution(clone $query, 'status'),
                 'methodDistribution' => $this->distribution(clone $query, 'method'),
                 'trend' => $this->trend(clone $query),
-                'recentTransactions' => (clone $query)->latest()->limit(8)->get()->map(fn (Payment $payment) => $this->formatPayment($payment))->values(),
-                'recentRefunds' => (clone $query)->where('refund_status', '!=', 'not_requested')->latest('refund_requested_at')->limit(8)->get()->map(fn (Payment $payment) => $this->formatPayment($payment))->values(),
+                'recentTransactions' => (clone $query)->latest()->limit(8)->get()->map(fn(Payment $payment) => $this->formatPayment($payment))->values(),
+                'recentRefunds' => (clone $query)->where('refund_status', '!=', 'not_requested')->latest('refund_requested_at')->limit(8)->get()->map(fn(Payment $payment) => $this->formatPayment($payment))->values(),
             ],
         ]);
     }
@@ -52,7 +52,7 @@ class AdminPaymentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $payments->getCollection()->map(fn (Payment $payment) => $this->formatPayment($payment))->values(),
+            'data' => $payments->getCollection()->map(fn(Payment $payment) => $this->formatPayment($payment))->values(),
             'meta' => [
                 'current_page' => $payments->currentPage(),
                 'last_page' => $payments->lastPage(),
@@ -82,7 +82,7 @@ class AdminPaymentController extends Controller
         $payments = $query->latest('refund_requested_at')->paginate(min(max($request->integer('per_page', 20), 1), 100))->withQueryString();
         return response()->json([
             'success' => true,
-            'data' => $payments->getCollection()->map(fn (Payment $payment) => $this->formatPayment($payment, true))->values(),
+            'data' => $payments->getCollection()->map(fn(Payment $payment) => $this->formatPayment($payment, true))->values(),
             'meta' => ['current_page' => $payments->currentPage(), 'last_page' => $payments->lastPage(), 'per_page' => $payments->perPage(), 'total' => $payments->total()],
         ]);
     }
@@ -92,7 +92,7 @@ class AdminPaymentController extends Controller
         $this->authorizeAdmin($request, 'payments.revenue');
         $query = $this->filteredQuery($request)->whereIn('status', ['paid', 'completed', 'settled', 'success', 'successful']);
         $payments = $query->get(['paid_at', 'paid_amount', 'discount_amount', 'tax_amount', 'refund_amount', 'due_amount', 'doctor_id', 'method', 'gateway']);
-        $daily = $payments->groupBy(fn (Payment $payment) => $payment->paid_at?->toDateString() ?? 'unpaid')->map(fn ($items) => (float) $items->sum('paid_amount'))->all();
+        $daily = $payments->groupBy(fn(Payment $payment) => $payment->paid_at?->toDateString() ?? 'unpaid')->map(fn($items) => (float) $items->sum('paid_amount'))->all();
 
         return response()->json(['success' => true, 'data' => [
             'grossRevenue' => (float) $payments->sum('paid_amount'),
@@ -138,7 +138,7 @@ class AdminPaymentController extends Controller
     {
         $this->authorizeAdmin($request, 'payments.edit');
         $keys = ['payment:gateway', 'payment:mode', 'payment:currency', 'payment:methods', 'payment:tax', 'payment:refund_enabled', 'payment:required'];
-        return response()->json(['success' => true, 'data' => Setting::query()->whereIn('key', $keys)->get()->mapWithKeys(fn (Setting $setting) => [$setting->key => $setting->castValue()])]);
+        return response()->json(['success' => true, 'data' => Setting::query()->whereIn('key', $keys)->get()->mapWithKeys(fn(Setting $setting) => [$setting->key => $setting->castValue()])]);
     }
 
     public function updateSettings(Request $request): JsonResponse
@@ -157,7 +157,7 @@ class AdminPaymentController extends Controller
 
         DB::transaction(function () use ($data): void {
             foreach ($data as $key => $value) {
-                $settingKey = 'payment:'.$key;
+                $settingKey = 'payment:' . $key;
                 $setting = Setting::query()->firstOrNew(['key' => $settingKey]);
                 $setting->forceFill([
                     'key' => $settingKey,
@@ -185,15 +185,20 @@ class AdminPaymentController extends Controller
             $this->audit($request, $message, $locked);
             return $locked->fresh();
         });
-        return response()->json(['success' => true, 'message' => $message.'.', 'data' => $this->formatPayment($updated, true)]);
+        return response()->json(['success' => true, 'message' => $message . '.', 'data' => $this->formatPayment($updated, true)]);
     }
 
     private function filteredQuery(Request $request): Builder
     {
         $query = Payment::query()->with(['appointment', 'patient.user', 'doctor.user']);
         $search = trim($request->string('search')->toString());
-        if ($search !== '') $query->where(fn (Builder $builder) => $builder->where('transaction_no', 'like', "%{$search}%")->orWhere('gateway_transaction_id', 'like', "%{$search}%")->orWhereHas('patient', fn (Builder $patient) => $patient->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
-        foreach (['status', 'method', 'provider', 'doctor_id'] as $field) if ($request->filled($field)) $query->where($field, $request->input($field));
+        if ($search !== '') $query->where(fn(Builder $builder) => $builder->where('transaction_no', 'like', "%{$search}%")->orWhere('gateway_transaction_id', 'like', "%{$search}%")->orWhereHas('patient', fn(Builder $patient) => $patient->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
+        foreach (['method', 'provider', 'doctor_id'] as $field) if ($request->filled($field)) $query->where($field, $request->input($field));
+        if ($request->filled('status')) {
+            $status = strtolower(trim($request->string('status')->toString()));
+            if ($status === 'pending') $query = $this->pendingQuery($query);
+            else $query->whereIn('status', $status === 'failed' ? ['failed', 'refund_failed'] : [$status]);
+        }
         if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->input('date_from'));
         if ($request->filled('date_to')) $query->whereDate('created_at', '<=', $request->input('date_to'));
         return $query;
@@ -206,12 +211,25 @@ class AdminPaymentController extends Controller
 
     private function trend(Builder $query): array
     {
-        return $query->whereIn('status', ['paid', 'completed', 'settled', 'success', 'successful'])->where('paid_at', '>=', now()->subDays(30))->get(['paid_at', 'paid_amount'])->groupBy(fn (Payment $payment) => $payment->paid_at?->toDateString())->map(fn ($items) => (float) $items->sum('paid_amount'))->all();
+        return $query->whereIn('status', ['paid', 'completed', 'settled', 'success', 'successful'])->where('paid_at', '>=', now()->subDays(30))->get(['paid_at', 'paid_amount'])->groupBy(fn(Payment $payment) => $payment->paid_at?->toDateString())->map(fn($items) => (float) $items->sum('paid_amount'))->all();
     }
 
     private function sortColumn(string $sort): string
     {
         return in_array($sort, ['created_at', 'paid_at', 'amount', 'paid_amount', 'status'], true) ? $sort : 'created_at';
+    }
+
+    private function pendingStatuses(): array
+    {
+        return ['pending', 'processing', 'reviewing'];
+    }
+
+    private function pendingQuery(Builder $query): Builder
+    {
+        return $query->where(function (Builder $builder): void {
+            $builder->whereIn('status', $this->pendingStatuses())
+                ->orWhereHas('appointment', fn(Builder $appointment) => $appointment->whereIn('payment_status', ['pending' , 'unpaid']));
+        });
     }
 
     private function formatPayment(Payment $payment, bool $details = false): array
@@ -255,6 +273,6 @@ class AdminPaymentController extends Controller
 
     private function audit(Request $request, string $action, ?Payment $payment): void
     {
-        AuditLog::create(['user_id' => $request->user()?->id, 'action' => $action, 'auditable_type' => $payment ? Payment::class : null, 'auditable_id' => $payment?->id, 'description' => $payment ? $action.' for payment '.$payment->transaction_no : $action, 'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(), 'url' => $request->fullUrl()]);
+        AuditLog::create(['user_id' => $request->user()?->id, 'action' => $action, 'auditable_type' => $payment ? Payment::class : null, 'auditable_id' => $payment?->id, 'description' => $payment ? $action . ' for payment ' . $payment->transaction_no : $action, 'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(), 'url' => $request->fullUrl()]);
     }
 }

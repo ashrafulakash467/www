@@ -297,9 +297,9 @@ export default function UsersPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
               Total Users
             </p>
-            <p className="mt-1 text-2xl font-bold text-slate-950">{totalUsers}</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Showing {visibleUsers} user{visibleUsers === 1 ? "" : "s"} in this category.
+            <p className="mt-1 text-sm text-slate-500">{totalUsers}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Showing <spam className="mt-1 text-xl font-bold text-slate-950">{visibleUsers} </spam>user.
             </p>
           </div>
 

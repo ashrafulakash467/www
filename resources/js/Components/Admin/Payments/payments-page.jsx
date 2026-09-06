@@ -291,7 +291,7 @@ function Overview({ data, loading }) {
         ["Total Revenue", data.totalRevenue],
         ["Today's Revenue", data.todayRevenue],
         ["Successful Payments", data.successfulPayments, true],
-        ["Pending Payments", data.pendingPayments, true],
+        ["Pending Payments", data.pendingPayments ?? 0, true],
         ["Failed Payments", data.failedPayments, true],
         ["Refunded Amount", data.refundedAmount],
         ["Net Revenue", data.netRevenue],
@@ -958,7 +958,7 @@ function title(view) {
             "refunds-completed": "Completed Refunds",
             transactions: "Transactions",
             revenue: "Revenue",
-            settings: "Payment Settings",
+            // settings: "Payment Settings",
         }[view] || "Payments"
     );
 }
