@@ -49,5 +49,33 @@ class RefundService
         return $payment->fresh();
     }
 
+    public function processAdminRefund(Payment $payment, string $reason): Payment
+    {
+        if (! $payment->refund_ref_id) {
+            $reference = 'RFN-'.$payment->transaction_no.'-'.Str::upper(Str::random(8));
+            $payment->forceFill([
+                'refund_ref_id' => $reference,
+                'refund_transaction_id' => $reference,
+            ])->save();
+        }
+
+        $reference = $payment->refund_ref_id;
+        $payment->forceFill([
+            'refund_amount' => $payment->refund_amount ?: $payment->paid_amount,
+            'refund_status' => 'processing',
+            'status' => 'refund_processing',
+            'refund_reason' => $reason,
+            'refund_requested_at' => $payment->refund_requested_at ?: now(),
+        ])->save();
+
+        $result = $this->gateway->refund($payment, $reference, (float) $payment->refund_amount, $reason);
+        $payment->forceFill([
+            'refund_status' => $result['success'] ? 'processing' : 'failed',
+            'refund_response' => $result['data'] ?? null,
+        ])->save();
+
+        return $payment->fresh();
+    }
+
     private function isPaid(Payment $payment): bool { return in_array(strtolower((string) $payment->status), ['paid', 'completed', 'settled', 'success', 'successful'], true); }
 }

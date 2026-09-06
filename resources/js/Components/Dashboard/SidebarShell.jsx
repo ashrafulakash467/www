@@ -18,6 +18,7 @@ export default function SidebarShell({
   className = "",
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [expandedKeys, setExpandedKeys] = useState([]);
 
   useEffect(() => {
     function syncCollapsedState() {
@@ -55,6 +56,42 @@ export default function SidebarShell({
     return source.trim().charAt(0).toUpperCase();
   }
 
+  function hasActiveChild(item) {
+    return item.children?.some((child) => child.key === activeKey || hasActiveChild(child));
+  }
+
+  function renderItem(item, depth = 0) {
+    const active = getIsActive(item) || hasActiveChild(item);
+    const expanded = expandedKeys.includes(item.key) || hasActiveChild(item);
+
+    return (
+      <div key={item.key}>
+        <button
+          type="button"
+          onClick={() => {
+            if (item.children?.length) {
+              setExpandedKeys((current) => current.includes(item.key)
+                ? current.filter((key) => key !== item.key)
+                : [...current, item.key]);
+            }
+            onItemClick?.(item);
+          }}
+          title={isCollapsed ? item.label : undefined}
+          className={[
+            "group flex w-full items-center gap-3 rounded-2xl text-left text-sm font-semibold transition",
+            isCollapsed ? "justify-center px-2 py-3" : depth ? "px-4 py-2.5 pl-12" : "px-4 py-3",
+            active && !depth ? "bg-slate-950 text-white shadow-lg shadow-slate-950/10" : active ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
+          ].join(" ")}
+        >
+          {depth === 0 ? <span className={["flex h-9 w-9 flex-none items-center justify-center rounded-xl transition", active ? "bg-white/10 text-white" : "bg-slate-50 text-slate-500 group-hover:bg-white group-hover:text-slate-900"].join(" ")}>{renderIcon ? renderIcon(item, active) : null}</span> : null}
+          {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
+          {!isCollapsed && item.children?.length ? <span className="ml-auto text-xs">{expanded ? "-" : "+"}</span> : null}
+        </button>
+        {!isCollapsed && expanded && item.children?.length ? <div className="mt-1 space-y-1">{item.children.map((child) => renderItem(child, depth + 1))}</div> : null}
+      </div>
+    );
+  }
+
   return (
     <aside
       className={[
@@ -65,38 +102,7 @@ export default function SidebarShell({
     >
       <nav className="flex-1 overflow-y-auto py-4">
         <div className="space-y-2">
-          {items.map((item) => {
-            const active = getIsActive(item);
-
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => onItemClick?.(item)}
-                title={isCollapsed ? item.label : undefined}
-                className={[
-                  "group flex w-full items-center gap-3 rounded-2xl text-left text-sm font-semibold transition",
-                  isCollapsed ? "justify-center px-2 py-3" : "px-4 py-3",
-                  active
-                    ? "bg-slate-950 text-white shadow-lg shadow-slate-950/10"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
-                ].join(" ")}
-              >
-                <span
-                  className={[
-                    "flex h-9 w-9 flex-none items-center justify-center rounded-xl transition",
-                    active
-                      ? "bg-white/10 text-white"
-                      : "bg-slate-50 text-slate-500 group-hover:bg-white group-hover:text-slate-900",
-                  ].join(" ")}
-                >
-                  {renderIcon ? renderIcon(item, active) : null}
-                </span>
-
-                {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
-              </button>
-            );
-          })}
+          {items.map((item) => renderItem(item))}
         </div>
       </nav>
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AdminController;
+use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
@@ -73,6 +74,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::patch('admin/doctor-verifications/{doctorId}/decision', [AdminController::class, 'decision']);
         Route::get('admin/doctors', [DoctorController::class, 'adminIndex']);
         Route::get('admin/appointments', [AppointmentController::class, 'adminIndex']);
+        Route::get('admin/payments/overview', [AdminPaymentController::class, 'overview']);
+        Route::get('admin/payments/revenue', [AdminPaymentController::class, 'revenue']);
+        Route::get('admin/payments/settings', [AdminPaymentController::class, 'settings']);
+        Route::put('admin/payments/settings', [AdminPaymentController::class, 'updateSettings']);
+        Route::get('admin/payments', [AdminPaymentController::class, 'index']);
+        Route::get('admin/payments/{payment}', [AdminPaymentController::class, 'show'])->whereNumber('payment');
+        Route::get('admin/refunds', [AdminPaymentController::class, 'refunds']);
+        Route::patch('admin/refunds/{payment}/approve', [AdminPaymentController::class, 'approveRefund'])->whereNumber('payment');
+        Route::patch('admin/refunds/{payment}/reject', [AdminPaymentController::class, 'rejectRefund'])->whereNumber('payment');
+        Route::post('admin/refunds/{payment}/process', [AdminPaymentController::class, 'processRefund'])->whereNumber('payment');
         Route::post('admin/doctors', [DoctorController::class, 'adminStore']);
         Route::put('admin/doctors/{doctorId}', [DoctorController::class, 'adminUpdate']);
         Route::delete('admin/doctors/{doctorId}', [DoctorController::class, 'adminDestroy']);

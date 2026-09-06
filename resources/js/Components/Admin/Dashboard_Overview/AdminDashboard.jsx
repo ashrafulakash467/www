@@ -6,7 +6,19 @@ import UsersPage from "../Users/users-page";
 import DoctorsPage from "../Doctors/doctors-page";
 import ReportsPage from "../Doctors/reports-page";
 import AppointmentsPage from "../Appointments/appointments-page";
-import PaymentsPage from "../Payments/payments-page";
+import PaymentsOverview from "../Payments/Overview";
+import AllPayments from "../Payments/AllPayments";
+import SuccessfulPayments from "../Payments/SuccessfulPayments";
+import PendingPayments from "../Payments/PendingPayments";
+import FailedPayments from "../Payments/FailedPayments";
+import Transactions from "../Payments/Transactions";
+import Revenue from "../Payments/Revenue";
+import PaymentSettings from "../Payments/PaymentSettings";
+import AllRefunds from "../Payments/Refunds/aallRefunds";
+import PendingRefunds from "../Payments/Refunds/PendingRequests";
+import ApprovedRefunds from "../Payments/Refunds/Approved";
+import RejectedRefunds from "../Payments/Refunds/Rejected";
+import CompletedRefunds from "../Payments/Refunds/Completed";
 import ContentPage from "../Content/content-page";
 import NotificationsPage from "../Notifications/notifications-page";
 import SupportPage from "../Support/support-page";
@@ -661,6 +673,14 @@ export default function AdminDashboard() {
       return;
     }
 
+    if (item.key === "payments") {
+      setActiveTab("payments-overview");
+      return;
+    }
+    if (item.key === "payments-refunds") {
+      setActiveTab("refunds-all");
+      return;
+    }
     setActiveTab(item.key);
   }
 
@@ -772,7 +792,19 @@ export default function AdminDashboard() {
               onMessage={setStatusMessage}
             />
           )}
-          {activeTab === "payments" && <PaymentsPage payments={payments} />}
+          {(activeTab === "payments" || activeTab === "payments-overview") && <PaymentsOverview />}
+          {activeTab === "payments-all" && <AllPayments />}
+          {activeTab === "payments-successful" && <SuccessfulPayments />}
+          {activeTab === "payments-pending" && <PendingPayments />}
+          {activeTab === "payments-failed" && <FailedPayments />}
+          {activeTab === "refunds-all" && <AllRefunds />}
+          {activeTab === "refunds-pending" && <PendingRefunds />}
+          {activeTab === "refunds-approved" && <ApprovedRefunds />}
+          {activeTab === "refunds-rejected" && <RejectedRefunds />}
+          {activeTab === "refunds-completed" && <CompletedRefunds />}
+          {activeTab === "payments-transactions" && <Transactions />}
+          {activeTab === "payments-revenue" && <Revenue />}
+          {activeTab === "payments-settings" && <PaymentSettings />}
           {activeTab === "content" && <ContentPage content={content} />}
           {activeTab === "reports" && (
             <ReportsPage
