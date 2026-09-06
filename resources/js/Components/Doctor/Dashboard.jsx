@@ -398,6 +398,8 @@ export default function DoctorDashboardClient() {
           <TodayAppointments
             appointments={todayAppointments}
             isLoading={isAppointmentsLoading}
+            records={records}
+            onMedicalRecordsChanged={loadMedicalRecords}
           />
         )}
 
@@ -405,6 +407,8 @@ export default function DoctorDashboardClient() {
           <UpcomingAppointment
             appointments={upcomingAppointments}
             isLoading={isAppointmentsLoading}
+            records={records}
+            onMedicalRecordsChanged={loadMedicalRecords}
           />
         )}
 

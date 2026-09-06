@@ -160,11 +160,7 @@ export default function PendingRequestPage({
                         : "border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:shadow-md"
                     }`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => openDetails(appointment.id)}
-                      className="w-full text-left"
-                    >
+                    <div className="w-full text-left">
                       <div className="flex gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -231,9 +227,16 @@ export default function PendingRequestPage({
                           </p>
                         </div>
                       </div>
-                    </button>
+                    </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openDetails(appointment.id)}
+                        className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        View
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleAction(appointment.id, "accepted")}
@@ -400,14 +403,25 @@ export default function PendingRequestPage({
               </button>
               <button
                 type="button"
+                onClick={() => handleAction(selectedAppointment.id, "reschedule")}
+                disabled={loadingAction?.appointmentId === selectedAppointment.id}
+                className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingAction?.appointmentId === selectedAppointment.id &&
+                loadingAction?.decision === "reschedule"
+                  ? "Sending..."
+                  : "Reschedule"}
+              </button>
+              <button
+                type="button"
                 onClick={() => handleAction(selectedAppointment.id, "accepted")}
                 disabled={loadingAction?.appointmentId === selectedAppointment.id}
                 className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loadingAction?.appointmentId === selectedAppointment.id &&
                 loadingAction?.decision === "accepted"
-                  ? "Saving..."
-                  : "Save"}
+                  ? "Accepting..."
+                  : "Accept"}
               </button>
             </div>
           </aside>
