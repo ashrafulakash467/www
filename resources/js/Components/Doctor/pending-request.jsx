@@ -160,120 +160,177 @@ export default function PendingRequestPage({
                         : "border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:shadow-md"
                     }`}
                   >
-                    <div className="w-full text-left">
-                      <div className="flex gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p
-                              className={`text-sm font-bold ${
-                                isSelected ? "text-white" : "text-slate-900"
-                              }`}
-                            >
-                              {appointment.patient?.name ||
-                                appointment.patientName ||
-                                "Patient"}
-                            </p>
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusTone(
-                                appointment.status,
-                              )}`}
-                            >
-                              {appointment.status || "pending"}
-                            </span>
-                          </div>
-                          <p
-                            className={`text-xs ${
-                              isSelected ? "text-slate-200" : "text-slate-500"
+
+
+                    <div className="grid w-full gap-5 lg:grid-cols-[minmax(0,1fr)_180px_auto] lg:items-center">
+                    {/* Patient / Appointment Info */}
+                    <div className="min-w-0 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                        <p
+                            className={`truncate text-sm font-bold ${
+                            isSelected ? "text-white" : "text-slate-900"
                             }`}
-                          >
-                            {appointment.doctor?.specialty || "Consultation"}
-                          </p>
-                          <p
-                            className={`text-xs ${
-                              isSelected ? "text-slate-200" : "text-slate-500"
-                            }`}
-                          >
-                            {appointment.appointmentDate} at {appointment.slotTime}
-                          </p>
-                          {appointment.changeRequest?.type === "reschedule" ? (
-                            <p
-                              className={`mt-2 rounded-lg border px-3 py-2 text-xs font-semibold ${
-                                isSelected
-                                  ? "border-amber-300/40 bg-amber-300/10 text-amber-100"
-                                  : "border-amber-200 bg-amber-50 text-amber-800"
-                              }`}
-                            >
-                              Requested: {appointment.changeRequest.appointment_date} at{" "}
-                              {appointment.changeRequest.slot_time}
-                            </p>
-                          ) : null}
+                        >
+                            {appointment.patient?.name ||
+                            appointment.patientName ||
+                            "Patient"}
+                        </p>
+
+                        <span
+                            className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusTone(
+                            appointment.status,
+                            )}`}
+                        >
+                            {appointment.status || "pending"}
+                        </span>
                         </div>
 
-                        <div className={`space-y-1 text-right ${isSelected ? "text-slate-100" : ""}`}>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-current/70">
-                            Time left
-                          </p>
-                          <p className="text-sm font-bold text-current">
+                        <p
+                        className={`text-xs ${
+                            isSelected ? "text-slate-200" : "text-slate-500"
+                        }`}
+                        >
+                        {appointment.doctor?.specialty || "Consultation"}
+                        </p>
+
+                        <p
+                        className={`text-xs font-medium ${
+                            isSelected ? "text-slate-200" : "text-slate-500"
+                        }`}
+                        >
+                        {appointment.appointmentDate}{" "}
+                        <span className="mx-1 opacity-60">at</span>
+                        {appointment.slotTime}
+                        </p>
+
+                        {/* Reschedule Request */}
+                        {appointment.changeRequest?.type === "reschedule" ? (
+                        <div
+                            className={`mt-3 rounded-lg border px-3 py-2.5 ${
+                            isSelected
+                                ? "border-amber-300/40 bg-amber-300/10"
+                                : "border-amber-200 bg-amber-50"
+                            }`}
+                        >
+                            <p
+                            className={`text-[10px] font-bold uppercase tracking-wider ${
+                                isSelected ? "text-amber-200" : "text-amber-700"
+                            }`}
+                            >
+                            Reschedule Requested
+                            </p>
+
+                            <p
+                            className={`mt-1 text-xs font-semibold ${
+                                isSelected ? "text-amber-100" : "text-amber-800"
+                            }`}
+                            >
+                            {appointment.changeRequest.appointment_date}{" "}
+                            <span className="mx-1 opacity-60">at</span>
+                            {appointment.changeRequest.slot_time}
+                            </p>
+                        </div>
+                        ) : null}
+                    </div>
+
+                    {/* Time / Payment */}
+                    <div
+                        className={`flex gap-5 lg:flex-col lg:gap-1 lg:pl-5 ${
+                        isSelected ? "text-slate-100" : "text-slate-700"
+                        }`}
+                    >
+                        <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-current/50">
+                            Time Left
+                        </p>
+
+                        <p className="mt-0.5 text-sm font-bold">
                             {countdown}
-                          </p>
-                          <p
-                            className={`text-[11px] font-semibold uppercase tracking-wide ${
-                              isSelected
+                        </p>
+                        </div>
+
+                        <div>
+                        <p
+                            className={`text-[10px] font-bold uppercase tracking-wider ${
+                            isSelected
                                 ? "text-white"
                                 : getPaymentTone(appointment.paymentStatus)
                             }`}
-                          >
+                        >
                             {appointment.paymentStatus || "unpaid"}
-                          </p>
+                        </p>
                         </div>
-                      </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
+                    {/* Actions */}
+                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        {/* View */}
+                        <button
                         type="button"
                         onClick={() => openDetails(appointment.id)}
-                        className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAction(appointment.id, "accepted")}
-                        disabled={isLoading}
-                        className="rounded-md border border-emerald-200 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isLoading && loadingAction?.decision === "accepted"
-                          ? "Accepting..."
-                          : isPatientChangeRequest
-                            ? "Accept request"
-                            : "Accept"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAction(appointment.id, "rejected")}
-                        disabled={isLoading}
-                        className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isLoading && loadingAction?.decision === "rejected"
-                          ? "Rejecting..."
-                          : isPatientChangeRequest
-                            ? "Reject request"
-                            : "Reject"}
-                      </button>
-                      {!isPatientChangeRequest ? (
-                        <button
-                          type="button"
-                          onClick={() => handleAction(appointment.id, "reschedule")}
-                          disabled={isLoading}
-                          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        className={`rounded-lg border px-3.5 py-2 text-xs font-semibold transition-all duration-200 ${
+                            isSelected
+                            ? "border-white/20 bg-white/10 text-white hover:bg-white/20"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        }`}
                         >
-                          {isLoading && loadingAction?.decision === "reschedule"
+                        View
+                        </button>
+
+                        {/* Accept */}
+                        <button
+                        type="button"
+                        onClick={() =>
+                            handleAction(appointment.id, "accepted")
+                        }
+                        disabled={isLoading}
+                        className="rounded-lg border border-emerald-200 bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                        {isLoading && loadingAction?.decision === "accepted"
+                            ? "Accepting..."
+                            : isPatientChangeRequest
+                            ? "Accept Request"
+                            : "Accept"}
+                        </button>
+
+                        {/* Reject */}
+                        <button
+                        type="button"
+                        onClick={() =>
+                            handleAction(appointment.id, "rejected")
+                        }
+                        disabled={isLoading}
+                        className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-700 transition-all duration-200 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                        {isLoading && loadingAction?.decision === "rejected"
+                            ? "Rejecting..."
+                            : isPatientChangeRequest
+                            ? "Reject Request"
+                            : "Reject"}
+                        </button>
+
+                        {/* Reschedule */}
+                        {!isPatientChangeRequest ? (
+                        <button
+                            type="button"
+                            onClick={() =>
+                            handleAction(appointment.id, "reschedule")
+                            }
+                            disabled={isLoading}
+                            className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-700 transition-all duration-200 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {isLoading &&
+                            loadingAction?.decision === "reschedule"
                             ? "Sending..."
                             : "Reschedule"}
                         </button>
-                      ) : null}
+                        ) : null}
                     </div>
+                    </div>
+
+
+
+
                   </article>
                 );
               })}
