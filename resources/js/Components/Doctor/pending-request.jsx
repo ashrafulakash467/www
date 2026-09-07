@@ -33,7 +33,36 @@ export default function PendingRequestPage({
 
   const filteredAppointments = appointments.filter((appointment) => {
     if (filterType === "all") return true;
-    return String(appointment?.status ?? "").toLowerCase() === filterType;
+
+    const status = String(appointment?.status ?? "").toLowerCase();
+    const hasChangeRequest = Boolean(appointment?.changeRequest);
+    const changeRequestType = appointment?.changeRequest?.type;
+
+    // Check if this is a pending request (includes regular pending and change requests)
+    const isPendingRequest = ["pending", "cancellation_requested", "reschedule_requested"].includes(status);
+
+    if (filterType === "pending") {
+      // Show regular pending appointments (without change requests)
+      return isPendingRequest && !hasChangeRequest;
+    }
+
+    if (filterType === "reschedule_requested") {
+      // Show appointments with reschedule change requests
+      return (
+        status === "reschedule_requested" ||
+        (isPendingRequest && changeRequestType === "reschedule")
+      );
+    }
+
+    if (filterType === "cancellation_requested") {
+      // Show appointments with cancellation change requests
+      return (
+        status === "cancellation_requested" ||
+        (isPendingRequest && hasChangeRequest && changeRequestType !== "reschedule")
+      );
+    }
+
+    return false;
   });
 
   useEffect(() => {
