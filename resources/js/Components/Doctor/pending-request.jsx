@@ -10,6 +10,13 @@ import {
   InfoCard,
 } from "./dashboard-shared";
 
+const FILTER_OPTIONS = [
+  { value: "all", label: "All Pendings" },
+  { value: "pending", label: "Pending Appointments" },
+  { value: "reschedule_requested", label: "Pending Reshedule Request" },
+  { value: "cancellation_requested", label: "Pending Cancel Request" },
+];
+
 export default function PendingRequestPage({
   appointments = [],
   selectedAppointmentId,
@@ -21,23 +28,30 @@ export default function PendingRequestPage({
   const [actionError, setActionError] = useState("");
   const [loadingAction, setLoadingAction] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [filterType, setFilterType] = useState("all");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const filteredAppointments = appointments.filter((appointment) => {
+    if (filterType === "all") return true;
+    return String(appointment?.status ?? "").toLowerCase() === filterType;
+  });
 
   useEffect(() => {
-    if (appointments.length === 0) {
+    if (filteredAppointments.length === 0) {
       return;
     }
 
-    const selectedStillExists = appointments.some(
+    const selectedStillExists = filteredAppointments.some(
       (appointment) => appointment.id === selectedAppointmentId,
     );
 
     if (!selectedAppointmentId || !selectedStillExists) {
-      onSelectAppointment(appointments[0].id);
+      onSelectAppointment(filteredAppointments[0].id);
     }
-  }, [appointments, onSelectAppointment, selectedAppointmentId]);
+  }, [filteredAppointments, onSelectAppointment, selectedAppointmentId]);
 
   const selectedAppointment =
-    appointments.find(
+    filteredAppointments.find(
       (appointment) => appointment.id === selectedAppointmentId,
     ) ?? null;
 
@@ -95,6 +109,10 @@ export default function PendingRequestPage({
     }
   }
 
+  const activeFilterLabel =
+    FILTER_OPTIONS.find((option) => option.value === filterType)?.label ??
+    "All Pendings";
+
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
@@ -106,9 +124,62 @@ export default function PendingRequestPage({
             Review each request and process the exact patient row you select.
           </p>
         </div>
-        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-          {appointments.length} waiting
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+            {filteredAppointments.length} waiting
+          </span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen((prev) => !prev)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              {activeFilterLabel}
+              <svg
+                className={`h-3.5 w-3.5 transition-transform ${
+                  isDropdownOpen ? "rotate-180" : ""
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {isDropdownOpen ? (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setIsDropdownOpen(false)}
+                />
+                <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  {FILTER_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setFilterType(option.value);
+                        setIsDropdownOpen(false);
+                      }}
+                      className={`flex w-full items-center px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${
+                        filterType === option.value
+                          ? "bg-slate-100 font-semibold text-slate-900"
+                          : "text-slate-600"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       {actionError ? (
@@ -132,13 +203,13 @@ export default function PendingRequestPage({
             </div>
           </div>
 
-          {appointments.length === 0 ? (
+          {filteredAppointments.length === 0 ? (
             <p className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
               No pending requests right now.
             </p>
           ) : (
             <div className="mt-4 space-y-3">
-              {appointments.map((appointment) => {
+              {filteredAppointments.map((appointment) => {
                 const isSelected = appointment.id === selectedAppointmentId;
                 const isPatientChangeRequest = Boolean(appointment.changeRequest);
                 const isLoading =
