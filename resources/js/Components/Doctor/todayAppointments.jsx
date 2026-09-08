@@ -155,7 +155,7 @@ function PatientCard({ appointment, onView }) {
     const patient = appointment.patient ?? {};
     const doctor = appointment.doctor ?? {};
     return (
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-lg font-bold text-slate-900">
@@ -165,16 +165,20 @@ function PatientCard({ appointment, onView }) {
                         {patient.email || "No email available"}
                     </p>
                 </div>
-                <span className="w-fit rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-700">
-                    {appointment.status || "Pending"}
-                </span>
+                    <span className="w-fit rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-700">
+                        {appointment.status || "Pending"}
+                    </span>
             </div>
             <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mt-2 sm:mt-0">
+
                 <Detail label="Appointment" value={appointment.id} />
                 <Detail
                     label="Time"
                     value={appointment.slotTime || "Not set"}
                 />
+                </div>
+                <div className="mt-2 sm:mt-0">
                 <Detail
                     label="Consultation"
                     value={
@@ -187,20 +191,24 @@ function PatientCard({ appointment, onView }) {
                     label="Payment"
                     value={appointment.paymentStatus || "Pending"}
                 />
+                </div>
+                <div className="mt-2 sm:mt-0">
                 <Detail
                     label="Phone"
                     value={patient.phone || "Not available"}
                 />
                 <Detail label="Doctor" value={doctor.name || "You"} />
-            </div>
-            <div className="mt-4 flex justify-end">
+                </div>
+            
+            <div className="m-2 flex justify-end">
                 <button
                     type="button"
                     onClick={() => onView(appointment)}
-                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+                    className="rounded-lg bg-slate-900 py-2 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
                 >
                     View
                 </button>
+            </div>
             </div>
         </article>
     );
