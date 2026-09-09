@@ -92,6 +92,7 @@ export const adminSidebarItems = [
   { key: "notifications", label: "Notifications", icon: "notifications" },
   { key: "support", label: "Support", icon: "support" },
   { key: "roles", label: "Roles & Permissions", icon: "roles" },
+  { key: "doctor-earnings", label: "Doctor Earnings", icon: "wallet" },
   { key: "audit", label: "Audit Logs", icon: "audit" },
   { key: "settings", label: "All Settings", icon: "settings" },
 ];

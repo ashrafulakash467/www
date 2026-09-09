@@ -23,6 +23,7 @@ import ContentPage from "../Content/content-page";
 import NotificationsPage from "../Notifications/notifications-page";
 import SupportPage from "../Support/support-page";
 import RolesPage from "../Roles_&_permisions/roles-page";
+import DoctorEarning from "../Roles_&_permisions/doctorEarning";
 import SettingsPage from "../All_Settings/settings-page";
 import AuditPage from "../Audit_logs/audit-page";
 import DashboardHeader from "@/Components/Dashboard/header";
@@ -826,6 +827,7 @@ export default function AdminDashboard() {
             />
           )}
           {activeTab === "roles" && <RolesPage roles={roles} />}
+          {activeTab === "doctor-earnings" && <DoctorEarning />}
           {activeTab === "settings" && (
             <SettingsPage settings={systemSettings} onToggleSetting={toggleSetting} />
           )}

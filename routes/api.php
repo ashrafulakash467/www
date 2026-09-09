@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AdminCommissionController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AppointmentController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\DoctorController;
+use App\Http\Controllers\Api\V1\DoctorEarningController;
 use App\Http\Controllers\Api\V1\MedicalRecordController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -94,6 +96,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::put('admin/settings/{settingId}', [SettingsController::class, 'update']);
         Route::put('admin/settings/{settingId}/toggle', [SettingsController::class, 'toggle']);
         Route::delete('admin/settings/{settingId}', [SettingsController::class, 'destroy']);
+
+        // Admin Commission Management
+        Route::get('admin/commission', [AdminCommissionController::class, 'index']);
+        Route::put('admin/commission/defaults', [AdminCommissionController::class, 'updateDefaults']);
+        Route::put('admin/commission/doctors/{doctorId}', [AdminCommissionController::class, 'updateDoctor'])->whereNumber('doctorId');
+        Route::delete('admin/commission/doctors/{doctorId}', [AdminCommissionController::class, 'removeDoctorPercentage'])->whereNumber('doctorId');
     });
 
     Route::middleware('role:doctor|admin|super-admin')->group(function (): void {
@@ -102,6 +110,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('consultations/{appointmentId}/prescriptions', [MedicalRecordController::class, 'storePrescription']);
         Route::post('consultations/{appointmentId}/documents', [MedicalRecordController::class, 'storeDocument']);
         Route::post('appointment/decision', [AppointmentController::class, 'decision']);
+
+        // Doctor Earnings
+        Route::get('doctor/earnings/summary', [DoctorEarningController::class, 'summary']);
+        Route::get('doctor/earnings/history', [DoctorEarningController::class, 'history']);
+        Route::get('doctor/earnings/trend', [DoctorEarningController::class, 'trend']);
+        Route::get('doctor/earnings/balance', [DoctorEarningController::class, 'balance']);
+        Route::get('doctor/earnings/{earningId}', [DoctorEarningController::class, 'show'])->whereNumber('earningId');
     });
 
     Route::middleware('role:patient|admin|super-admin')->group(function (): void {

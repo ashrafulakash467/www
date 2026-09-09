@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Payment;
+use App\Services\EarningService;
 use App\Services\PaymentService;
 use App\Services\RefundService;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,11 @@ use Illuminate\Support\Str;
 
 class SslCommerzPaymentController extends Controller
 {
-    public function __construct(private readonly PaymentService $payments, private readonly RefundService $refunds) {}
+    public function __construct(
+        private readonly PaymentService $payments,
+        private readonly RefundService $refunds,
+        private readonly EarningService $earnings,
+    ) {}
 
     /**
      * Create an SSLCommerz session and return its hosted checkout URL.
@@ -393,6 +398,8 @@ class SslCommerzPaymentController extends Controller
 
             $lockedPayment->appointment?->update(['payment_status' => 'paid']);
         });
+
+        $this->earnings->createEarningFromPayment($payment->fresh());
     }
 
     private function generateTransactionNo(): string

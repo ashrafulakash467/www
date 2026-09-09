@@ -12,7 +12,10 @@ use Illuminate\Support\Str;
 
 class RefundService
 {
-    public function __construct(private readonly SSLCommerzService $gateway) {}
+    public function __construct(
+        private readonly SSLCommerzService $gateway,
+        private readonly EarningService $earnings,
+    ) {}
 
     public function percentage(Appointment $appointment, string $cancelledBy = 'patient'): int
     {
@@ -45,7 +48,13 @@ class RefundService
         if (!$payment->refund_ref_id || !in_array($payment->refund_status, ['processing', 'requested'], true)) return $payment;
         $result = $this->gateway->refundStatus($payment->refund_ref_id);
         $status = $result['status'] ?? 'processing';
-        if (in_array($status, ['refunded', 'failed', 'cancelled'], true)) $payment->forceFill(['refund_status' => $status, 'status' => $status === 'refunded' ? 'refunded' : 'refund_failed', 'refund_processed_at' => now(), 'refund_response' => $result['data'] ?? null])->save();
+        if (in_array($status, ['refunded', 'failed', 'cancelled'], true)) {
+            $payment->forceFill(['refund_status' => $status, 'status' => $status === 'refunded' ? 'refunded' : 'refund_failed', 'refund_processed_at' => now(), 'refund_response' => $result['data'] ?? null])->save();
+
+            if ($status === 'refunded') {
+                $this->earnings->processRefundReversal($payment->fresh(), (float) $payment->refund_amount);
+            }
+        }
         return $payment->fresh();
     }
 

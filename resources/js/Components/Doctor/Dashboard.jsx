@@ -20,6 +20,7 @@ import {
   fetchMedicalRecords,
 } from "@/utils/medical-records";
 import SettingsPage from "./Settings-page";
+import Earnings from "./earnings/Earnings";
 import SidebarShell from "@/Components/Dashboard/SidebarShell";
 import { doctorSidebarItems } from "@/Components/Dashboard/sidebar-config";
 import { Icon } from "./dashboard-shared";
@@ -458,16 +459,7 @@ export default function DoctorDashboardClient() {
           />
         )}
 
-        {activeTab === "earnings" && (
-          <EarningsPanel
-            summary={{
-              earningsCents: paidAppointmentTotal,
-              pending: pendingRequests.length,
-            }}
-            appointments={appointments}
-            onNavigateTab={handleTabChange}
-          />
-        )}
+        {activeTab === "earnings" && <Earnings />}
 
         {activeTab === "notifications" && (
           <NotificationsPanel
