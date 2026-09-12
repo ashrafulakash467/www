@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { savePrescriptionRecord, saveDocumentRecord } from '@/utils/medical-records';
 
 const emptyMedicine = {
@@ -38,6 +38,39 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    const matchingPrescription = Array.isArray(records?.prescriptions)
+      ? records.prescriptions.find((prescription) => {
+          const recordAppointmentKey = String(prescription.appointmentId ?? prescription.appointment_id ?? prescription.appointmentNo ?? prescription.appointment_no ?? '');
+          return recordAppointmentKey === appointmentKey;
+        })
+      : null;
+
+    if (!matchingPrescription) {
+      return;
+    }
+
+    const existingItems = Array.isArray(matchingPrescription.items)
+      ? matchingPrescription.items.map((item) => ({
+          medicine_name: item.medicineName ?? item.medicine_name ?? '',
+          strength: item.strength ?? '',
+          dosage: item.dosage ?? '',
+          frequency: item.frequency ?? '',
+          route: item.route ?? 'Oral',
+          duration: item.duration ?? '',
+          quantity: Number(item.quantity ?? 1),
+          instructions: item.instructions ?? '',
+        }))
+      : [];
+
+    if (existingItems.length) {
+      setItems(existingItems);
+    }
+
+    setNotes(String(matchingPrescription.summary ?? matchingPrescription.notes ?? notes ?? ''));
+    setFollowUpInDays(Number(matchingPrescription.followUpInDays ?? followUpInDays ?? 7));
+  }, [appointmentKey, records, notes, followUpInDays]);
 
   const hasExistingMedicine = useMemo(() => {
     return (records?.prescriptions ?? []).some((prescription) => {
@@ -92,9 +125,28 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
         items: cleanItems,
       };
 
-      await savePrescriptionRecord(prescriptionPayload, 'doctor');
+      const prescriptionResult = await savePrescriptionRecord(prescriptionPayload, 'doctor');
 
       if (createUploadDocument) {
+        const prescriptionHtml = buildPrescriptionHtmlFile({
+          patientName,
+          doctorName,
+          appointmentNo,
+          appointmentDate,
+          appointmentTime,
+          paymentStatus,
+          paymentMethod,
+          items: cleanItems,
+          notes: notes || clinicalNotes,
+          followUpInDays,
+        });
+
+        const prescriptionAttachment = new File(
+          [prescriptionHtml],
+          `${String(patientName || 'prescription').replace(/\s+/g, '-').toLowerCase()}-${appointmentNo || 'record'}.html`,
+          { type: 'text/html;charset=utf-8' },
+        );
+
         await saveDocumentRecord({
           appointmentId: appointmentKey,
           title: `${patientName || 'Prescription'} ${appointmentNo || ''}`,
@@ -103,11 +155,11 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
           referenceNo: appointmentNo,
           documentDate: appointmentDate,
           documentUrl: '',
-          documentFile: undefined,
+          documentFile: prescriptionAttachment,
         }, 'doctor');
       }
 
-      setSuccess('Prescription saved successfully');
+      setSuccess(prescriptionResult ? 'Prescription saved successfully' : 'Prescription saved successfully');
       onSaved?.();
     } catch (catchError) {
       setError(catchError instanceof Error ? catchError.message : 'Could not save prescription.');
@@ -116,8 +168,8 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
     }
   }
 
-  async function handleSave(event) {
-    event.preventDefault();
+  async function handleUpdate(event) {
+    event?.preventDefault?.();
     setError('');
     setSuccess('');
 
@@ -125,7 +177,7 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
   }
 
   async function handleUpload(event) {
-    event.preventDefault();
+    event?.preventDefault?.();
     setError('');
     setSuccess('');
 
@@ -145,7 +197,7 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-6 px-6 py-5">
+        <form className="space-y-6 px-6 py-5">
           {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
           {success ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div> : null}
 
@@ -288,17 +340,58 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
 
           <section className="flex justify-end gap-3 border-t border-slate-200 pt-4">
             <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button type="button" onClick={handleUpload} disabled={saving} className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-70">
-              {saving ? 'Uploading...' : 'Upload'}
+            <button type="button" onClick={handleUpdate} disabled={saving} className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-70">
+              {saving ? 'Updating...' : 'Update'}
             </button>
-            <button type="submit" disabled={saving} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70">
-              {saving ? 'Saving...' : 'Save Prescription'}
+            <button type="button" onClick={handleUpload} disabled={saving} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70">
+              {saving ? 'Saving...' : 'Save & Upload Prescription'}
             </button>
           </section>
         </form>
       </div>
     </div>
   );
+}
+
+function buildPrescriptionHtmlFile({ patientName, doctorName, appointmentNo, appointmentDate, appointmentTime, paymentStatus, paymentMethod, items, notes, followUpInDays }) {
+  const rows = items.map((item) => `<tr>
+    <td>${escapeHtml(item.medicine_name || 'Medicine')}</td>
+    <td>${escapeHtml(item.strength || '-')}</td>
+    <td>${escapeHtml(item.dosage || '-')}</td>
+    <td>${escapeHtml(item.frequency || '-')}</td>
+    <td>${escapeHtml(item.route || 'Oral')}</td>
+    <td>${escapeHtml(item.duration || '-')}</td>
+    <td>${escapeHtml(item.quantity ?? '1')}</td>
+    <td>${escapeHtml(item.instructions || '-')}</td>
+  </tr>`).join('');
+
+  return `<!doctype html>
+<html>
+<head><meta charset="utf-8" /><title>Prescription</title></head>
+<body>
+<h1>Prescription</h1>
+<p>Patient: ${escapeHtml(patientName)}</p>
+<p>Doctor: ${escapeHtml(doctorName)}</p>
+<p>Appointment: ${escapeHtml(appointmentNo)}</p>
+<p>Date: ${escapeHtml(appointmentDate)}</p>
+<p>Time: ${escapeHtml(appointmentTime)}</p>
+<p>Payment: ${escapeHtml(paymentStatus)} / ${escapeHtml(paymentMethod)}</p>
+<p>Follow-up: ${escapeHtml(String(followUpInDays))} days</p>
+<p>Notes: ${escapeHtml(notes)}</p>
+<table>
+<thead><tr><th>Medicine</th><th>Strength</th><th>Dosage</th><th>Frequency</th><th>Route</th><th>Duration</th><th>Quantity</th><th>Instructions</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
+</body></html>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function getMedicalValue(records, key, appointment = {}) {

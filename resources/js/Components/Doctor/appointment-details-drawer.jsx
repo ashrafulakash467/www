@@ -17,10 +17,23 @@ export default function AppointmentDetailsDrawer({
   onMedicalRecordsChanged,
 }) {
   const appointmentKey = String(appointment?.appointment_no ?? appointment?.appointmentNo ?? appointment?.id ?? "");
+  const appointmentKeyCandidates = new Set([
+    String(appointment?.appointment_no ?? ""),
+    String(appointment?.appointmentNo ?? ""),
+    String(appointment?.id ?? ""),
+  ].filter(Boolean));
+
   const prescriptionRecords = Array.isArray(records?.prescriptions)
-    ? records.prescriptions.filter((item) =>
-        String(item.appointmentId ?? item.appointment_id ?? item.appointmentNo ?? item.appointment_no ?? "") === appointmentKey,
-      )
+    ? records.prescriptions.filter((item) => {
+        const prescriptionKeys = new Set([
+          String(item.appointmentId ?? ""),
+          String(item.appointment_id ?? ""),
+          String(item.appointmentNo ?? ""),
+          String(item.appointment_no ?? ""),
+        ].filter(Boolean));
+
+        return [...appointmentKeyCandidates].some((key) => prescriptionKeys.has(key));
+      })
     : [];
 
   const [documentType, setDocumentType] = useState("pdf");
@@ -40,7 +53,7 @@ export default function AppointmentDetailsDrawer({
 
   const patient = appointment.patient ?? {};
   const doctor = appointment.doctor ?? {};
-  const documents = [...(records.invoices ?? []), ...(records.uploads ?? [])].filter(
+  const documents = [...(records.invoices ?? []), ...(records.uploads ?? []), ...(records.diagnostics ?? [])].filter(
     (item) => String(item.appointmentId ?? item.appointment_id ?? item.appointmentNo ?? item.appointment_no ?? "") === appointmentKey,
   );
 

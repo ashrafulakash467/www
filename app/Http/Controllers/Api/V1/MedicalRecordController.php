@@ -307,7 +307,7 @@ class MedicalRecordController extends Controller
             'documentDate' => ['nullable', 'date'],
             'amountCents' => ['nullable', 'integer', 'min:0'],
             'documentUrl' => ['nullable', 'string', 'max:2048'],
-            'documentFile' => ['nullable', 'file', 'mimes:pdf,png,jpg,jpeg', 'max:20480'],
+            'documentFile' => ['nullable', 'file', 'mimes:pdf,png,jpg,jpeg,html,htm', 'max:20480'],
         ]);
 
         $appointment = $this->appointmentForDoctor($user->doctor->id, $appointmentId);
@@ -333,7 +333,7 @@ class MedicalRecordController extends Controller
             $filename = Str::slug(pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME))
                 .'-'.Str::random(8).'.'.$uploadedFile->getClientOriginalExtension();
             $storedPath = $uploadedFile->storePubliclyAs($directory, $filename, 'public');
-            $attachmentUrl = Storage::disk('public')->url($storedPath);
+            $attachmentUrl = url('/storage/'.$storedPath);
         }
 
         $attachment = [
