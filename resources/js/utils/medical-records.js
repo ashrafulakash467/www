@@ -82,7 +82,7 @@ export async function saveConsultationMemo(
 }
 
 export async function savePrescriptionRecord(
-  { appointmentId, prescription, notes, followUpInDays },
+  { appointmentId, prescription, notes, followUpInDays, items },
   role = "doctor",
 ) {
   const token = resolveToken(role);
@@ -94,6 +94,7 @@ export async function savePrescriptionRecord(
         prescription,
         notes,
         followUpInDays,
+        items,
       }),
     },
     token,

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import OnlinePrescription from "./onlinePrescription";
 import { saveDocumentRecord } from "@/utils/medical-records";
 
 const DOCUMENT_CATEGORIES = [
@@ -26,6 +27,7 @@ export default function AppointmentDetailsDrawer({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isOnlinePrescriptionOpen, setIsOnlinePrescriptionOpen] = useState(false);
 
   if (!appointment) return null;
 
@@ -135,6 +137,28 @@ export default function AppointmentDetailsDrawer({
             <p className="mt-2"><strong className="text-slate-900">Reason:</strong> {appointment.reason || "Not provided"}</p>
             <p className="mt-2"><strong className="text-slate-900">Notes:</strong> {appointment.notes || appointment.description || "Not provided"}</p>
           </div>
+
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setIsOnlinePrescriptionOpen(true)}
+              className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              Online Prescription
+            </button>
+          </div>
+
+          {isOnlinePrescriptionOpen ? (
+            <OnlinePrescription
+              appointment={appointment}
+              records={records}
+              onClose={() => setIsOnlinePrescriptionOpen(false)}
+              onSaved={async () => {
+                setIsOnlinePrescriptionOpen(false);
+                await onMedicalRecordsChanged?.();
+              }}
+            />
+          ) : null}
 
           <section className="rounded-xl border border-slate-200 p-4">
             <div className="border-b border-slate-100 pb-3">

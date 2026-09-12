@@ -202,9 +202,18 @@ class MedicalRecordController extends Controller
         }
 
         $data = $request->validate([
-            'prescription' => ['required', 'string', 'min:3'],
+            'prescription' => ['nullable', 'string', 'min:3'],
             'notes' => ['nullable', 'string'],
             'followUpInDays' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.medicine_name' => ['required', 'string', 'min:1'],
+            'items.*.strength' => ['required', 'string', 'min:1'],
+            'items.*.dosage' => ['required', 'string', 'min:1'],
+            'items.*.frequency' => ['required', 'string', 'min:1'],
+            'items.*.route' => ['required', 'string', 'min:1'],
+            'items.*.duration' => ['required', 'string', 'min:1'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.instructions' => ['nullable', 'string'],
         ]);
 
         $appointment = $this->appointmentForDoctor($user->doctor->id, $appointmentId);
@@ -228,7 +237,10 @@ class MedicalRecordController extends Controller
                 'clinical_notes' => array_key_exists('notes', $data) && filled($data['notes'])
                     ? $data['notes']
                     : $medicalRecord->clinical_notes,
-                'treatment_plan' => $data['prescription'],
+                'diagnosis' => array_key_exists('diagnosis', $data) ? $data['diagnosis'] : $medicalRecord->diagnosis,
+                'treatment_plan' => array_key_exists('prescription', $data) && filled($data['prescription'])
+                    ? $data['prescription']
+                    : ($medicalRecord->treatment_plan ?? null),
                 'recorded_at' => now(),
             ])->save();
 
@@ -246,9 +258,24 @@ class MedicalRecordController extends Controller
                 'medical_record_id' => $medicalRecord->id,
                 'status' => 'issued',
                 'issued_at' => now(),
-                'notes' => $data['prescription'],
+                'notes' => $data['notes'] ?? ($data['prescription'] ?? null),
                 'follow_up_in_days' => $data['followUpInDays'] ?? null,
             ])->save();
+
+            $prescription->items()->delete();
+
+            foreach ($data['items'] as $item) {
+                $prescription->items()->create([
+                    'medicine_name' => trim((string) ($item['medicine_name'] ?? '')),
+                    'strength' => trim((string) ($item['strength'] ?? '')),
+                    'dosage' => trim((string) ($item['dosage'] ?? '')),
+                    'frequency' => trim((string) ($item['frequency'] ?? '')),
+                    'route' => trim((string) ($item['route'] ?? '')),
+                    'duration' => trim((string) ($item['duration'] ?? '')),
+                    'quantity' => (int) ($item['quantity'] ?? 0),
+                    'instructions' => trim((string) ($item['instructions'] ?? '')),
+                ]);
+            }
 
             return $prescription->loadMissing([
                 'doctor.user',
