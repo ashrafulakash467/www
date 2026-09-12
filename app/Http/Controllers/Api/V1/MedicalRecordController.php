@@ -414,7 +414,8 @@ class MedicalRecordController extends Controller
             'summary' => $prescription->notes,
             'date' => $prescription->issued_at?->toDateString() ?? $prescription->created_at->toDateString(),
             'issuedAt' => $prescription->issued_at?->toISOString(),
-            'appointmentId' => $prescription->appointment_id ? (string) $prescription->appointment_id : null,
+            'appointmentId' => $prescription->appointment?->appointment_no ? (string) $prescription->appointment->appointment_no : ($prescription->appointment_id ? (string) $prescription->appointment_id : null),
+            'appointmentNo' => $prescription->appointment?->appointment_no ? (string) $prescription->appointment->appointment_no : null,
             'followUpInDays' => $prescription->follow_up_in_days,
             'items' => $prescription->items->map(fn ($item) => [
                 'id' => (string) $item->id,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { savePrescriptionRecord } from '@/utils/medical-records';
+import { savePrescriptionRecord, saveDocumentRecord } from '@/utils/medical-records';
 
 const emptyMedicine = {
   medicine_name: '',
@@ -30,6 +30,7 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
   const chiefComplaint = getMedicalValue(records, 'chiefComplaint') || 'No chief complaint attached';
   const clinicalNotes = getMedicalValue(records, 'notes') || 'No clinical notes attached';
   const treatmentPlan = getMedicalValue(records, 'treatmentPlan') || 'No treatment plan attached';
+  const appointmentKey = String(appointment.appointment_no ?? appointment.appointmentNo ?? appointment.id ?? '');
 
   const [items, setItems] = useState([{ ...emptyMedicine }]);
   const [notes, setNotes] = useState('');
@@ -40,10 +41,10 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
 
   const hasExistingMedicine = useMemo(() => {
     return (records?.prescriptions ?? []).some((prescription) => {
-      const sameAppointment = String(prescription.appointmentId ?? prescription.appointment_id) === String(appointment.id ?? appointment.appointment_no ?? appointment.appointmentNo ?? '');
-      return sameAppointment;
+      const recordAppointmentKey = String(prescription.appointmentId ?? prescription.appointment_id ?? prescription.appointmentNo ?? prescription.appointment_no ?? '');
+      return recordAppointmentKey === appointmentKey;
     });
-  }, [appointment, records]);
+  }, [appointment, records, appointmentKey]);
 
   function updateMedicine(index, field, value) {
     const next = [...items];
@@ -64,11 +65,7 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
     setItems((current) => current.filter((_, i) => i !== index));
   }
 
-  async function handleSave(event) {
-    event.preventDefault();
-    setError('');
-    setSuccess('');
-
+  async function persistPrescription({ createUploadDocument = false } = {}) {
     const cleanItems = items.map((item) => ({
       medicine_name: String(item.medicine_name ?? '').trim(),
       strength: String(item.strength ?? '').trim(),
@@ -87,21 +84,28 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
 
     try {
       setSaving(true);
-      const payload = {
-        appointmentId: appointment.appointment_no || appointment.id,
+      const prescriptionPayload = {
+        appointmentId: appointmentKey,
         prescription: treatmentPlan,
         notes: notes || clinicalNotes,
         followUpInDays,
         items: cleanItems,
       };
 
-      await savePrescriptionRecord({
-        appointmentId: appointment.appointment_no || appointment.id,
-        prescription: treatmentPlan,
-        notes: notes || clinicalNotes,
-        followUpInDays,
-        items: cleanItems,
-      }, 'doctor');
+      await savePrescriptionRecord(prescriptionPayload, 'doctor');
+
+      if (createUploadDocument) {
+        await saveDocumentRecord({
+          appointmentId: appointmentKey,
+          title: `${patientName || 'Prescription'} ${appointmentNo || ''}`,
+          documentType: 'pdf',
+          notes: notes || clinicalNotes,
+          referenceNo: appointmentNo,
+          documentDate: appointmentDate,
+          documentUrl: '',
+          documentFile: undefined,
+        }, 'doctor');
+      }
 
       setSuccess('Prescription saved successfully');
       onSaved?.();
@@ -112,8 +116,24 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
     }
   }
 
+  async function handleSave(event) {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+
+    await persistPrescription({ createUploadDocument: false });
+  }
+
+  async function handleUpload(event) {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+
+    await persistPrescription({ createUploadDocument: true });
+  }
+
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/40 p-4 backdrop-blur-[2px]">
       <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
@@ -268,6 +288,9 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
 
           <section className="flex justify-end gap-3 border-t border-slate-200 pt-4">
             <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button type="button" onClick={handleUpload} disabled={saving} className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-70">
+              {saving ? 'Uploading...' : 'Upload'}
+            </button>
             <button type="submit" disabled={saving} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70">
               {saving ? 'Saving...' : 'Save Prescription'}
             </button>
@@ -278,10 +301,11 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
   );
 }
 
-function getMedicalValue(records, key) {
+function getMedicalValue(records, key, appointment = {}) {
+  const appointmentKey = String(appointment.id ?? appointment.appointment_no ?? appointment.appointmentNo ?? '');
   const lists = records?.notes ?? [];
   if (!Array.isArray(lists)) return '';
-  const target = lists.find((item) => String(item.appointmentId ?? item.appointment_id) === String(records?.targetAppointmentId ?? ''));
+  const target = lists.find((item) => String(item.appointmentId ?? item.appointment_id) === appointmentKey);
   if (!target) return '';
 
   return key === 'diagnosis'
