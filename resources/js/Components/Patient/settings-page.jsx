@@ -171,7 +171,7 @@ export default function PatientSettingsPage({ initialPatient }) {
             <div className="grid gap-3">
               <InfoCard title="Profile Completion" value={`${completion}%`} />
               <InfoCard title="Status" value={formatStatus(patient?.status)} />
-              <InfoCard title="MRN" value={patient?.patient?.mrn || "N/A"} />
+              {/* <InfoCard title="MRN" value={patient?.patient?.mrn || "N/A"} /> */}
               <InfoCard
                 title="Location"
                 value={formatLocation({
@@ -179,7 +179,7 @@ export default function PatientSettingsPage({ initialPatient }) {
                   state: patient?.patient?.state,
                 }) || "N/A"}
               />
-            </div>          
+            </div>
           </aside>
 
           <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
@@ -202,9 +202,30 @@ export default function PatientSettingsPage({ initialPatient }) {
             <form onSubmit={handleSubmit} className="mt-6 space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Full Name" name="name" value={form.name} onChange={updateField} />
-                <Field label="Email Address" name="email" type="email" value={form.email} onChange={updateField} />
-                <Field label="Phone Number" name="phone" value={form.phone} onChange={updateField} />
-                <Field label="MRN" name="mrn" value={form.mrn} onChange={updateField} />
+
+                <Field
+                label="Email Address"
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={updateField}
+                />
+
+                <Field
+                    label="Phone Number"
+                    name="phone"
+                    value={form.phone}
+                    onChange={(e) =>
+                        updateField({
+                            target: {
+                                name: "phone",
+                                value: e.target.value.replace(/\D/g, ""),
+                            },
+                        })
+                    }
+                />
+
+                {/* <Field label="MRN" name="mrn" value={form.mrn} onChange={updateField} /> */}
                 <Field
                   label="Gender"
                   name="gender"

@@ -359,7 +359,22 @@ export default function SettingsPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Name" name="name" value={form.name} onChange={updateField} placeholder="Doctor name" />
                   <Field label="Email" name="email" type="email" value={form.email} onChange={updateField} placeholder="doctor@example.com" />
-                  <Field label="Phone" name="phone" value={form.phone} onChange={updateField} placeholder="01700000000" />
+
+                    <Field
+                        label="Phone"
+                        name="phone"
+                        value={form.phone}
+                        onChange={(e) =>
+                            updateField({
+                                target: {
+                                    name: "phone",
+                                    value: e.target.value.replace(/\D/g, ""),
+                                },
+                            })
+                        }
+                        placeholder="017xxxxxxxx"
+                    />
+
                   <Field label="City" name="city" value={form.city} onChange={updateField} placeholder="Dhaka" />
                   <Field label="State" name="state" value={form.state} onChange={updateField} placeholder="Dhaka Division" />
                   <Field label="Country" name="country" value={form.country} onChange={updateField} placeholder="Bangladesh" />
@@ -522,22 +537,39 @@ export default function SettingsPage() {
                 description="Manage your consultation and follow-up charges."
               >
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field
-                    label="Consultation Fee"
-                    name="consultationFee"
-                    type="number"
-                    value={form.consultationFee}
-                    onChange={updateField}
-                    placeholder="1200"
-                  />
-                  <Field
-                    label="Follow-up Fee"
-                    name="followUpFee"
-                    type="number"
-                    value={form.followUpFee}
-                    onChange={updateField}
-                    placeholder="600"
-                  />
+                    <Field
+                        label="Consultation Fee"
+                        name="consultationFee"
+                        type="text"
+                        inputMode="numeric"
+                        value={form.consultationFee}
+                        onChange={(e) =>
+                            updateField({
+                                target: {
+                                    name: "consultationFee",
+                                    value: e.target.value.replace(/\D/g, ""),
+                                },
+                            })
+                        }
+                        placeholder="1200"
+                    />
+
+                    <Field
+                        label="Follow-up Fee"
+                        name="followUpFee"
+                        type="text"
+                        inputMode="numeric"
+                        value={form.followUpFee}
+                        onChange={(e) =>
+                            updateField({
+                                target: {
+                                    name: "followUpFee",
+                                    value: e.target.value.replace(/\D/g, ""),
+                                },
+                            })
+                        }
+                        placeholder="600"
+                    />
                 </div>
               </SettingsSection>
 
