@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon, formatCurrency } from "./dashboard-shared";
+import PrescriptionDisplay from "@/Components/Prescription/PrescriptionDisplay";
 
 const categories = [
   { key: "prescriptions", label: "Prescriptions" },
@@ -20,6 +21,17 @@ export default function PatientRecordsPage({
 }) {
   const currentRecords = records?.[recordCategory] ?? [];
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [printOnOpen, setPrintOnOpen] = useState(false);
+
+  function handlePrint(item) {
+    if (recordCategory === "prescriptions") {
+      setPrintOnOpen(true);
+      setSelectedRecord(item);
+      return;
+    }
+
+    printDocument(item);
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -88,13 +100,16 @@ export default function PatientRecordsPage({
                     <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
                       {item.status || "Available"}
                     </span>
-                    <ActionButton icon="eye" onClick={() => setSelectedRecord(item)}>
+                    <ActionButton icon="eye" onClick={() => {
+                      setPrintOnOpen(false);
+                      setSelectedRecord(item);
+                    }}>
                       View
                     </ActionButton>
                     <ActionButton icon="download" onClick={() => downloadDocument(item)}>
                       Download
                     </ActionButton>
-                    <ActionButton icon="printer" onClick={() => printDocument(item)}>
+                    <ActionButton icon="printer" onClick={() => handlePrint(item)}>
                       Print
                     </ActionButton>
                     <ActionButton icon="share" onClick={() => shareDocument(item)}>
@@ -126,7 +141,20 @@ export default function PatientRecordsPage({
         )}
       </div>
 
-      {selectedRecord ? (
+      {selectedRecord && recordCategory === "prescriptions" ? (
+        <PrescriptionDisplay
+          prescription={selectedRecord}
+          appointment={selectedRecord.appointment ?? {}}
+          doctor={isObject(selectedRecord.doctor) ? selectedRecord.doctor : {}}
+          patient={isObject(selectedRecord.patient) ? selectedRecord.patient : {}}
+          variant="drawer"
+          autoPrint={printOnOpen}
+          onClose={() => {
+            setSelectedRecord(null);
+            setPrintOnOpen(false);
+          }}
+        />
+      ) : selectedRecord ? (
         <RecordDetailsDrawer
           record={selectedRecord}
           onClose={() => setSelectedRecord(null)}
@@ -502,4 +530,8 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }

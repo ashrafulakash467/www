@@ -3,13 +3,13 @@ export const doctorSidebarItems = [
   { key: "dashboard", label: "Dashboard", icon: "dashboard" },
   { key: "today", label: "Today's Appointments", icon: "calendar" },
   { key: "upcoming", label: "Upcoming Appointments", icon: "calendar" },
-  { key: "history", label: "Appointment History", icon: "appointments" },
+  { key: "history", label: "Appointment History", icon: "clipboard" },
   { key: "pending", label: "Pending Requests", icon: "clipboard" },
   { key: "records", label: "Patient Records", icon: "records" },
   { key: "documents", label: "Documents", icon: "upload" },
-  { key: "schedule", label: "Schedule Management", icon: "stethoscope" },
+  // { key: "schedule", label: "Schedule Management", icon: "stethoscope" },
   { key: "earnings", label: "Earnings", icon: "wallet" },
-  { key: "notifications", label: "Notifications", icon: "bell" },
+  // { key: "notifications", label: "Notifications", icon: "bell" },
   { key: "settings", label: "Settings", icon: "settings" },
 ];
 
@@ -33,18 +33,18 @@ export const adminSidebarItems = [
         key: "payments-all",
         label: "All Payments",
       },
-      {
-        key: "payments-successful",
-        label: "Successful Payments",
-      },
-      {
-        key: "payments-pending",
-        label: "Pending Payments",
-      },
-      {
-        key: "payments-failed",
-        label: "Failed Payments",
-      },
+      // {
+      //   key: "payments-successful",
+      //   label: "Successful Payments",
+      // },
+      // {
+      //   key: "payments-pending",
+      //   label: "Pending Payments",
+      // },
+      // {
+      //   key: "payments-failed",
+      //   label: "Failed Payments",
+      // },
       {
         key: "payments-transactions",
         label: "Transactions",
@@ -71,18 +71,18 @@ export const adminSidebarItems = [
             key: "refunds-pending",
             label: "Pending Requests",
           },
-          {
-            key: "refunds-approved",
-            label: "Approved",
-          },
-          {
-            key: "refunds-rejected",
-            label: "Rejected",
-          },
-          {
-            key: "refunds-completed",
-            label: "Completed",
-          },
+          // {
+          //   key: "refunds-approved",
+          //   label: "Approved",
+          // },
+          // {
+          //   key: "refunds-rejected",
+          //   label: "Rejected",
+          // },
+          // {
+          //   key: "refunds-completed",
+          //   label: "Completed",
+          // },
         ],
       },
     ],
