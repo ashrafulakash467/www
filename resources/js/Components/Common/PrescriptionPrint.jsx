@@ -10,25 +10,19 @@ const PRINT_STYLES = `
       background: #fff !important;
     }
 
-    body * { visibility: hidden !important; }
-
     #prescription-print-sheet,
     #prescription-print-sheet * {
-      visibility: visible !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
 
     #prescription-print-sheet {
-      position: absolute !important;
-      inset: 0 auto auto 0 !important;
+      position: static !important;
       width: 100% !important;
       max-width: none !important;
       margin: 0 !important;
       overflow: visible !important;
       font-size: 9px !important;
-      break-inside: avoid-page !important;
-      page-break-inside: avoid !important;
     }
 
     #prescription-print-sheet .prescription-header {
@@ -134,6 +128,66 @@ const PRINT_STYLES = `
     }
   }
 `;
+
+export async function printPrescriptionElement(elementId = "prescription-print-sheet") {
+  if (typeof window === "undefined") return false;
+
+  const printableElement = document.getElementById(elementId);
+  if (!printableElement) return false;
+
+  const frame = document.createElement("iframe");
+  frame.setAttribute("title", "Prescription print document");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;pointer-events:none;";
+  document.body.appendChild(frame);
+
+  const printDocument = frame.contentDocument;
+  const printWindow = frame.contentWindow;
+
+  if (!printDocument || !printWindow) {
+    frame.remove();
+    return false;
+  }
+
+  const documentStyles = Array.from(
+    document.querySelectorAll('link[rel="stylesheet"], style'),
+  ).map((node) => node.outerHTML).join("\n");
+
+  printDocument.open();
+  printDocument.write(`<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <base href="${escapeAttribute(document.baseURI)}" />
+        <title>Prescription</title>
+        ${documentStyles}
+        <style>
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+          body { min-width: 0 !important; }
+          #prescription-print-sheet { display: block !important; }
+        </style>
+      </head>
+      <body>${printableElement.outerHTML}</body>
+    </html>`);
+  printDocument.close();
+
+  await waitForPrintDocument(printDocument);
+
+  let removed = false;
+  const removeFrame = () => {
+    if (removed) return;
+    removed = true;
+    frame.remove();
+  };
+
+  printWindow.addEventListener("afterprint", removeFrame, { once: true });
+  printWindow.focus();
+  printWindow.print();
+  window.setTimeout(removeFrame, 30000);
+
+  return true;
+}
 
 export default function PrescriptionPrint({
   prescription = {},
@@ -310,6 +364,53 @@ function MetaCard({ label, value, detail }) {
 
 function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+
+function escapeAttribute(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+async function waitForPrintDocument(printDocument) {
+  const printWindow = printDocument.defaultView;
+  const stylesheets = Array.from(printDocument.querySelectorAll('link[rel="stylesheet"]'));
+  const images = Array.from(printDocument.images);
+
+  await Promise.all([
+    ...stylesheets.map((stylesheet) => waitForResource(stylesheet, Boolean(stylesheet.sheet))),
+    ...images.map((image) => waitForResource(image, image.complete)),
+  ]);
+
+  if (printDocument.fonts?.ready) {
+    await printDocument.fonts.ready.catch(() => undefined);
+  }
+
+  if (printWindow) {
+    await new Promise((resolve) => {
+      printWindow.requestAnimationFrame(() => {
+        printWindow.requestAnimationFrame(resolve);
+      });
+    });
+  }
+}
+
+function waitForResource(element, isReady) {
+  if (isReady) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(resolve, 3000);
+    const finish = () => {
+      window.clearTimeout(timer);
+      resolve();
+    };
+
+    element.addEventListener("load", finish, { once: true });
+    element.addEventListener("error", finish, { once: true });
+  });
 }
 
 function firstValue(...values) {

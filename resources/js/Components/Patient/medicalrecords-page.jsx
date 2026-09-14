@@ -187,6 +187,8 @@ export default function MedicalRecordsPage({
       {selectedPrescription ? (
         <PrescriptionDisplay
           prescription={selectedPrescription}
+          appointment={selectedPrescription.appointment ?? {}}
+          doctor={selectedPrescription.doctor ?? {}}
           patient={patient}
           variant="drawer"
           autoPrint={printOnOpen}

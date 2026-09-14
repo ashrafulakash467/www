@@ -276,7 +276,7 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Prescription Medicines</h3>
-                <p className="text-xs text-slate-500">Prescribed medicines and instructions sdfjksdhjkdg</p>
+                <p className="text-xs text-slate-500">Prescribed medicines and instructions</p>
               </div>
               {!readOnly ? <button type="button" onClick={addMedicine} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Add Medicine</button> : null}
             </div>

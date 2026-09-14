@@ -1,25 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
-import PrescriptionPrint from "@/Components/Common/PrescriptionPrint";
+import { useEffect, useRef } from "react";
+import PrescriptionPrint, { printPrescriptionElement } from "@/Components/Common/PrescriptionPrint";
 
 export default function PrescriptionDisplay({
   prescription = {}, appointment = {}, doctor = {}, patient = {}, onClose,
   variant = "modal", autoPrint = false,
 }) {
   const isDrawer = variant === "drawer";
+  const hasAutoPrinted = useRef(false);
 
   useEffect(() => {
-    if (!autoPrint) return undefined;
+    if (!autoPrint || hasAutoPrinted.current) return undefined;
 
-    const closeAfterPrint = () => onClose?.();
-    const timer = window.setTimeout(() => window.print(), 250);
-    window.addEventListener("afterprint", closeAfterPrint);
+    hasAutoPrinted.current = true;
+    const timer = window.setTimeout(async () => {
+      const printed = await printPrescriptionElement();
+      if (printed) onClose?.();
+    }, 100);
 
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("afterprint", closeAfterPrint);
-    };
+    return () => window.clearTimeout(timer);
   }, [autoPrint, onClose]);
 
   return (
@@ -39,7 +39,7 @@ export default function PrescriptionDisplay({
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-3 print:hidden">
           <h2 id="prescription-display-title" className="text-lg font-bold text-slate-900">Prescription Preview</h2>
           <div className="flex gap-2">
-            <button type="button" onClick={() => window.print()} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700">Print</button>
+            <button type="button" onClick={() => printPrescriptionElement()} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700">Print</button>
             <button type="button" onClick={onClose} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-600 hover:bg-slate-50" aria-label="Close prescription">X</button>
           </div>
         </div>
