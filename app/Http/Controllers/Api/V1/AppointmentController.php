@@ -190,8 +190,6 @@ class AppointmentController extends Controller
             ]);
         }
 
-        $hasCompletedPayment = $this->hasCompletedPayment($appointment);
-
         if (in_array($appointment->status, ['cancellation_requested', 'reschedule_requested'], true)) {
             throw ValidationException::withMessages([
                 'appointmentId' => ['A change request is already waiting for doctor review.'],
@@ -417,57 +415,26 @@ class AppointmentController extends Controller
             ]);
         }
 
-        if ($appointment->status === 'confirmed' && $hasCompletedPayment) {
-            $meta = $appointment->meta ?? [];
-            $meta['patient_change_request'] = [
-                'type' => 'reschedule',
-                'appointment_date' => $data['appointmentDate'],
-                'slot_time' => $slot->start_time,
-                'requested_at' => now()->toISOString(),
-            ];
-
-            $appointment->forceFill([
-                'status' => 'reschedule_requested',
-                'meta' => $meta,
-            ])->save();
-            $appointment->loadMissing(['patient.user', 'doctor.user']);
-
-            return response()->json([
-                'message' => 'Reschedule request submitted for doctor review.',
-                'requestSubmitted' => true,
-                'requestedAppointmentDate' => $data['appointmentDate'],
-                'requestedSlotTime' => $this->displaySlotTime($slot),
-                'appointment' => $this->formatAppointment($appointment),
-            ]);
-        }
-
         $meta = $appointment->meta ?? [];
-        $meta['last_reschedule_request'] = [
+        $meta['patient_change_request'] = [
             'type' => 'reschedule',
             'appointment_date' => $data['appointmentDate'],
             'slot_time' => $slot->start_time,
-            'status' => 'accepted',
             'requested_at' => now()->toISOString(),
-            'decided_at' => now()->toISOString(),
         ];
 
-        $appointment = $this->bookingService->reschedule(
-            $appointment,
-            $data['appointmentDate'],
-            $data['slotTime'],
-            [
-                'status' => $appointment->status === 'cancelled' ? 'pending' : $appointment->status,
-                'meta' => $meta,
-            ],
-        );
+        $appointment->forceFill([
+            'status' => 'reschedule_requested',
+            'meta' => $meta,
+        ])->save();
+        $appointment->loadMissing(['patient.user', 'doctor.user']);
 
         return response()->json([
-            'message' => 'Appointment rescheduled successfully.',
-            'appointment' => $this->formatAppointment($appointment, [
-                'appointmentDate' => $data['appointmentDate'],
-                'slotTime' => $this->displaySlotTime($slot),
-                'rescheduledAt' => now()->toISOString(),
-            ]),
+            'message' => 'Reschedule request submitted for doctor review.',
+            'requestSubmitted' => true,
+            'requestedAppointmentDate' => $data['appointmentDate'],
+            'requestedSlotTime' => $this->displaySlotTime($slot),
+            'appointment' => $this->formatAppointment($appointment),
         ]);
     }
 

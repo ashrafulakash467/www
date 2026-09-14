@@ -44,7 +44,7 @@ export default function PendingRequestPage({
 
       case "reschedule_requested":
         // Show appointments with reschedule requests
-        return status === "reschedule_requested";
+        return status === "reschedule_requested" || appointment.changeRequest?.type === "reschedule";
 
       case "cancellation_requested":
         // Show appointments with cancellation requests
