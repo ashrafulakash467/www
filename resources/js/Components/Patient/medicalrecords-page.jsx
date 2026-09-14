@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import PrescriptionDisplay from "@/Components/Prescription/PrescriptionDisplay";
 import { Icon, formatCurrency } from "./dashboard-shared";
 
 const categories = [
@@ -19,6 +21,8 @@ export default function MedicalRecordsPage({
   error = "",
 }) {
   const currentRecords = records?.[recordCategory] ?? [];
+  const [selectedPrescription, setSelectedPrescription] = useState(null);
+  const [printOnOpen, setPrintOnOpen] = useState(false);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -79,7 +83,20 @@ export default function MedicalRecordsPage({
                 key={item.id}
                 className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                {recordCategory === "prescriptions" ? (
+                  <PrescriptionDetails
+                    prescription={item}
+                    onView={() => {
+                      setPrintOnOpen(false);
+                      setSelectedPrescription(item);
+                    }}
+                    onPrint={() => {
+                      setPrintOnOpen(true);
+                      setSelectedPrescription(item);
+                    }}
+                  />
+                ) : (
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <h4 className="text-sm font-bold text-slate-900">
@@ -123,6 +140,8 @@ export default function MedicalRecordsPage({
                   </div>
                 </div>
 
+                )}
+
                 {item.documentType === "invoice" || recordCategory === "invoices" ? (
                   <div className="mt-4 rounded-2xl border border-rose-100 bg-rose-50/60 p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -164,10 +183,47 @@ export default function MedicalRecordsPage({
           </div>
         )}
       </div>
+
+      {selectedPrescription ? (
+        <PrescriptionDisplay
+          prescription={selectedPrescription}
+          patient={patient}
+          variant="drawer"
+          autoPrint={printOnOpen}
+          onClose={() => {
+            setSelectedPrescription(null);
+            setPrintOnOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
+function PrescriptionDetails({ prescription, onView, onPrint }) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-3">
+        <RecordField label="Prescription ID" value={prescription.title || prescription.id} />
+        <RecordField label="Doctor" value={prescription.doctorName || prescription.doctor || "Doctor"} />
+        <RecordField label="Issue Date" value={prescription.date || prescription.issuedAt || "Not available"} />
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <ActionButton icon="eye" onClick={onView}>View</ActionButton>
+        <ActionButton icon="printer" onClick={onPrint}>Print</ActionButton>
+      </div>
+    </div>
+  );
+}
+
+function RecordField({ label, value }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-slate-800">{value || "Not available"}</p>
+    </div>
+  );
+}
 function ActionButton({ children, icon, onClick }) {
   return (
     <button

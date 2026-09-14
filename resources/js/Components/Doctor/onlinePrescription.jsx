@@ -1,9 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { savePrescriptionRecord, saveDocumentRecord } from '@/utils/medical-records';
+import PrescriptionDisplay from '@/Components/Prescription/PrescriptionDisplay';
+import {
+  savePrescriptionRecord,
+  updatePrescriptionRecord,
+} from '@/utils/medical-records';
 
 const emptyMedicine = {
+  id: null,
   medicine_name: '',
   strength: '',
   dosage: '',
@@ -14,9 +19,9 @@ const emptyMedicine = {
   instructions: '',
 };
 
-export default function OnlinePrescription({ appointment = {}, records = {}, onClose, onSaved }) {
-  const doctor = appointment.doctor?.user ?? appointment.doctor ?? {};
-  const patient = appointment.patient?.user ?? appointment.patient ?? {};
+export default function OnlinePrescription({ appointment = {}, records = {}, onClose, onSaved, readOnly = false }) {
+  const doctor = { ...(appointment.doctor ?? {}), ...(appointment.doctor?.user ?? {}) };
+  const patient = { ...(appointment.patient ?? {}), ...(appointment.patient?.user ?? {}) };
   const payment = appointment.payment ?? appointment.paymentDetails ?? {};
 
   const patientName = patient.name || appointment.patientName || 'Patient';
@@ -26,33 +31,46 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
   const appointmentTime = appointment.slotTime || appointment.start_time || 'Not set';
   const paymentStatus = appointment.paymentStatus || payment.status || appointment.payment_status || 'Pending';
   const paymentMethod = payment.method || payment.paymentMethod || appointment.paymentMethod || 'Not available';
-  const diagnosis = getMedicalValue(records, 'diagnosis') || 'No diagnosis attached';
-  const chiefComplaint = getMedicalValue(records, 'chiefComplaint') || 'No chief complaint attached';
-  const clinicalNotes = getMedicalValue(records, 'notes') || 'No clinical notes attached';
-  const treatmentPlan = getMedicalValue(records, 'treatmentPlan') || 'No treatment plan attached';
+  const diagnosis = getMedicalValue(records, 'diagnosis', appointment) || 'No diagnosis attached';
+  const chiefComplaint = getMedicalValue(records, 'chiefComplaint', appointment) || 'No chief complaint attached';
+  const clinicalNotes = getMedicalValue(records, 'notes', appointment) || '';
+  const treatmentPlan = getMedicalValue(records, 'treatmentPlan', appointment) || '';
   const appointmentKey = String(appointment.appointment_no ?? appointment.appointmentNo ?? appointment.id ?? '');
+
+  const existingPrescription = useMemo(() => {
+    if (!Array.isArray(records?.prescriptions)) return null;
+
+    return records.prescriptions.find((prescription) => {
+      const keys = [
+        prescription.appointmentId,
+        prescription.appointment_id,
+        prescription.appointmentNo,
+        prescription.appointment_no,
+      ].filter((value) => value !== null && value !== undefined).map(String);
+
+      return keys.includes(appointmentKey);
+    }) ?? null;
+  }, [appointmentKey, records?.prescriptions]);
 
   const [items, setItems] = useState([{ ...emptyMedicine }]);
   const [notes, setNotes] = useState('');
   const [followUpInDays, setFollowUpInDays] = useState(7);
   const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState('');
   const [success, setSuccess] = useState('');
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
   useEffect(() => {
-    const matchingPrescription = Array.isArray(records?.prescriptions)
-      ? records.prescriptions.find((prescription) => {
-          const recordAppointmentKey = String(prescription.appointmentId ?? prescription.appointment_id ?? prescription.appointmentNo ?? prescription.appointment_no ?? '');
-          return recordAppointmentKey === appointmentKey;
-        })
-      : null;
-
-    if (!matchingPrescription) {
+    if (!existingPrescription) {
+      setItems([{ ...emptyMedicine }]);
+      setNotes('');
+      setFollowUpInDays(7);
       return;
     }
 
-    const existingItems = Array.isArray(matchingPrescription.items)
-      ? matchingPrescription.items.map((item) => ({
+    const existingItems = Array.isArray(existingPrescription.items)
+      ? existingPrescription.items.map((item) => ({
+          id: item.id ?? null,
           medicine_name: item.medicineName ?? item.medicine_name ?? '',
           strength: item.strength ?? '',
           dosage: item.dosage ?? '',
@@ -64,25 +82,15 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
         }))
       : [];
 
-    if (existingItems.length) {
-      setItems(existingItems);
-    }
-
-    setNotes(String(matchingPrescription.summary ?? matchingPrescription.notes ?? notes ?? ''));
-    setFollowUpInDays(Number(matchingPrescription.followUpInDays ?? followUpInDays ?? 7));
-  }, [appointmentKey, records, notes, followUpInDays]);
-
-  const hasExistingMedicine = useMemo(() => {
-    return (records?.prescriptions ?? []).some((prescription) => {
-      const recordAppointmentKey = String(prescription.appointmentId ?? prescription.appointment_id ?? prescription.appointmentNo ?? prescription.appointment_no ?? '');
-      return recordAppointmentKey === appointmentKey;
-    });
-  }, [appointment, records, appointmentKey]);
+    setItems(existingItems.length ? existingItems : [{ ...emptyMedicine }]);
+    setNotes(String(existingPrescription.summary ?? existingPrescription.notes ?? ''));
+    setFollowUpInDays(Number(existingPrescription.followUpInDays ?? 7));
+  }, [existingPrescription?.id]);
 
   function updateMedicine(index, field, value) {
-    const next = [...items];
-    next[index] = { ...next[index], [field]: value };
-    setItems(next);
+    setItems((current) => current.map((item, itemIndex) => (
+      itemIndex === index ? { ...item, [field]: value } : item
+    )));
   }
 
   function addMedicine() {
@@ -90,98 +98,96 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
   }
 
   function removeMedicine(index) {
-    if (items.length === 1) {
-      setItems([{ ...emptyMedicine }]);
-      return;
-    }
-
-    setItems((current) => current.filter((_, i) => i !== index));
+    setItems((current) => current.length === 1
+      ? [{ ...emptyMedicine }]
+      : current.filter((_, itemIndex) => itemIndex !== index));
   }
 
-  async function persistPrescription({ createUploadDocument = false } = {}) {
+  function validatedPayload() {
+    if (!appointmentKey) {
+      throw new Error('The appointment ID is missing. Reopen the appointment and try again.');
+    }
+
     const cleanItems = items.map((item) => ({
+      id: item.id ?? undefined,
       medicine_name: String(item.medicine_name ?? '').trim(),
       strength: String(item.strength ?? '').trim(),
       dosage: String(item.dosage ?? '').trim(),
       frequency: String(item.frequency ?? '').trim(),
       route: String(item.route ?? '').trim(),
       duration: String(item.duration ?? '').trim(),
-      quantity: Number(item.quantity ?? 0),
+      quantity: Number(item.quantity),
       instructions: String(item.instructions ?? '').trim(),
     }));
 
-    if (cleanItems.some((item) => !item.medicine_name || !item.strength || !item.dosage || !item.frequency || !item.route || !item.duration || item.quantity < 1)) {
-      setError('Complete all required medicine fields before saving the prescription.');
-      return;
+    if (cleanItems.some((item) => !item.medicine_name || !item.strength || !item.dosage || !item.frequency || !item.route || !item.duration || !Number.isInteger(item.quantity) || item.quantity < 1)) {
+      throw new Error('Complete all required medicine fields and enter a valid quantity.');
     }
+
+    if (!Number.isInteger(followUpInDays) || followUpInDays < 1 || followUpInDays > 365) {
+      throw new Error('Follow-up days must be a whole number between 1 and 365.');
+    }
+
+    return {
+      appointmentId: appointmentKey,
+      prescription: treatmentPlan || undefined,
+      notes: notes.trim() || clinicalNotes || undefined,
+      followUpInDays,
+      items: cleanItems,
+    };
+  }
+
+  async function persistPrescription(action) {
+    setError('');
+    setSuccess('');
 
     try {
-      setSaving(true);
-      const prescriptionPayload = {
-        appointmentId: appointmentKey,
-        prescription: treatmentPlan,
-        notes: notes || clinicalNotes,
-        followUpInDays,
-        items: cleanItems,
-      };
-
-      const prescriptionResult = await savePrescriptionRecord(prescriptionPayload, 'doctor');
-
-      if (createUploadDocument) {
-        const prescriptionHtml = buildPrescriptionHtmlFile({
-          patientName,
-          doctorName,
-          appointmentNo,
-          appointmentDate,
-          appointmentTime,
-          paymentStatus,
-          paymentMethod,
-          items: cleanItems,
-          notes: notes || clinicalNotes,
-          followUpInDays,
-        });
-
-        const prescriptionAttachment = new File(
-          [prescriptionHtml],
-          `${String(patientName || 'prescription').replace(/\s+/g, '-').toLowerCase()}-${appointmentNo || 'record'}.html`,
-          { type: 'text/html;charset=utf-8' },
-        );
-
-        await saveDocumentRecord({
-          appointmentId: appointmentKey,
-          title: `${patientName || 'Prescription'} ${appointmentNo || ''}`,
-          documentType: 'pdf',
-          notes: notes || clinicalNotes,
-          referenceNo: appointmentNo,
-          documentDate: appointmentDate,
-          documentUrl: '',
-          documentFile: prescriptionAttachment,
-        }, 'doctor');
+      if (action === 'update' && !existingPrescription) {
+        throw new Error('Save this prescription before trying to update it.');
       }
 
-      setSuccess(prescriptionResult ? 'Prescription saved successfully' : 'Prescription saved successfully');
-      onSaved?.();
-    } catch (catchError) {
-      setError(catchError instanceof Error ? catchError.message : 'Could not save prescription.');
+      setSavingAction(action);
+      const payload = validatedPayload();
+      const savedPrescription = action === 'update'
+        ? await updatePrescriptionRecord(payload, 'doctor')
+        : await savePrescriptionRecord(payload, 'doctor');
+
+      setSuccess(action === 'update'
+        ? 'Prescription updated successfully.'
+        : 'Prescription saved successfully.');
+      await onSaved?.(savedPrescription);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Could not save prescription.');
     } finally {
-      setSaving(false);
+      setSavingAction('');
     }
   }
 
-  async function handleUpdate(event) {
-    event?.preventDefault?.();
-    setError('');
-    setSuccess('');
-
-    await persistPrescription({ createUploadDocument: false });
+  function handleSave(event) {
+    event.preventDefault();
+    return persistPrescription('save');
   }
 
-  async function handleUpload(event) {
-    event?.preventDefault?.();
-    setError('');
-    setSuccess('');
+  function handleUpdate() {
+    return persistPrescription('update');
+  }
 
-    await persistPrescription({ createUploadDocument: true });
+  function handlePrint() {
+    setIsPrintPreviewOpen(true);
+  }
+
+  const isSaving = Boolean(savingAction);
+
+  if (readOnly) {
+    return (
+      <PrescriptionDisplay
+        prescription={existingPrescription ?? {}}
+        appointment={appointment}
+        doctor={doctor}
+        patient={patient}
+        onClose={onClose}
+      />
+    );
   }
 
   return (
@@ -190,14 +196,15 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">HealthPortal</p>
-            <h2 className="text-2xl font-bold text-slate-900">Online Prescription</h2>
+            <h2 className="text-2xl font-bold text-slate-900">{readOnly ? 'Prescription' : 'Online Prescription'}</h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-600 hover:bg-slate-50" aria-label="Close prescription modal">
-            ×
-          </button>
+          <div className="flex gap-2 print:hidden">
+            <button type="button" onClick={handlePrint} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700">Print</button>
+            <button type="button" onClick={onClose} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-600 hover:bg-slate-50" aria-label="Close prescription modal">X</button>
+          </div>
         </div>
 
-        <form className="space-y-6 px-6 py-5">
+        <form className="space-y-6 px-6 py-5" onSubmit={handleSave}>
           {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
           {success ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div> : null}
 
@@ -257,7 +264,7 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Clinical Notes</p>
-              <p className="mt-2 text-sm text-slate-700">{clinicalNotes}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{readOnly ? (notes || clinicalNotes || 'No clinical notes attached') : (clinicalNotes || 'No clinical notes attached')}</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Treatment Plan</p>
@@ -269,13 +276,16 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Prescription Medicines</h3>
-                <p className="text-xs text-slate-500">Prescribed medicines and instructions</p>
+                <p className="text-xs text-slate-500">Prescribed medicines and instructions sdfjksdhjkdg</p>
               </div>
-              <button type="button" onClick={addMedicine} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Add Medicine</button>
+              {!readOnly ? <button type="button" onClick={addMedicine} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Add Medicine</button> : null}
             </div>
 
-            <div className="space-y-4 p-4">
-              {items.map((medicine, index) => (
+            {readOnly ? (
+              <PrescriptionMedicineTable items={items} />
+            ) : (
+              <div className="space-y-4 p-4">
+                {items.map((medicine, index) => (
                 <div key={index} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-sm font-bold text-slate-900">Medicine #{index + 1}</span>
@@ -323,11 +333,12 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
                     </label>
                   </div>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2">
+          {!readOnly ? <section className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 text-xs font-bold uppercase tracking-wide text-slate-600">
               Doctor's Instructions / Notes
               <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows="4" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900" placeholder="Take medicines regularly." />
@@ -336,62 +347,67 @@ export default function OnlinePrescription({ appointment = {}, records = {}, onC
               Follow-up In Days
               <input type="number" min="1" value={followUpInDays} onChange={(event) => setFollowUpInDays(Number(event.target.value))} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900" />
             </label>
-          </section>
+          </section> : null}
 
-          <section className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+          {!readOnly ? <section className="flex justify-end gap-3 border-t border-slate-200 pt-4 print:hidden">
             <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button type="button" onClick={handleUpdate} disabled={saving} className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-70">
-              {saving ? 'Updating...' : 'Update'}
+            <button type="button" onClick={handleUpdate} disabled={isSaving || !existingPrescription} className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50">
+              {savingAction === 'update' ? 'Updating...' : 'Update Prescription'}
             </button>
-            <button type="button" onClick={handleUpload} disabled={saving} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70">
-              {saving ? 'Saving...' : 'Save & Upload Prescription'}
+            <button type="submit" disabled={isSaving} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70">
+              {savingAction === 'save' ? 'Saving...' : 'Save Prescription'}
             </button>
-          </section>
+          </section> : null}
         </form>
       </div>
+
+      {isPrintPreviewOpen ? (
+        <PrescriptionDisplay
+          prescription={{
+            ...(existingPrescription ?? {}),
+            title: existingPrescription?.title || 'Draft Prescription',
+            summary: notes || clinicalNotes,
+            followUpInDays,
+            status: existingPrescription?.status || 'Draft',
+            date: existingPrescription?.date || new Date().toISOString().slice(0, 10),
+            items,
+          }}
+          appointment={appointment}
+          doctor={doctor}
+          patient={patient}
+          autoPrint
+          onClose={() => setIsPrintPreviewOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function buildPrescriptionHtmlFile({ patientName, doctorName, appointmentNo, appointmentDate, appointmentTime, paymentStatus, paymentMethod, items, notes, followUpInDays }) {
-  const rows = items.map((item) => `<tr>
-    <td>${escapeHtml(item.medicine_name || 'Medicine')}</td>
-    <td>${escapeHtml(item.strength || '-')}</td>
-    <td>${escapeHtml(item.dosage || '-')}</td>
-    <td>${escapeHtml(item.frequency || '-')}</td>
-    <td>${escapeHtml(item.route || 'Oral')}</td>
-    <td>${escapeHtml(item.duration || '-')}</td>
-    <td>${escapeHtml(item.quantity ?? '1')}</td>
-    <td>${escapeHtml(item.instructions || '-')}</td>
-  </tr>`).join('');
-
-  return `<!doctype html>
-<html>
-<head><meta charset="utf-8" /><title>Prescription</title></head>
-<body>
-<h1>Prescription</h1>
-<p>Patient: ${escapeHtml(patientName)}</p>
-<p>Doctor: ${escapeHtml(doctorName)}</p>
-<p>Appointment: ${escapeHtml(appointmentNo)}</p>
-<p>Date: ${escapeHtml(appointmentDate)}</p>
-<p>Time: ${escapeHtml(appointmentTime)}</p>
-<p>Payment: ${escapeHtml(paymentStatus)} / ${escapeHtml(paymentMethod)}</p>
-<p>Follow-up: ${escapeHtml(String(followUpInDays))} days</p>
-<p>Notes: ${escapeHtml(notes)}</p>
-<table>
-<thead><tr><th>Medicine</th><th>Strength</th><th>Dosage</th><th>Frequency</th><th>Route</th><th>Duration</th><th>Quantity</th><th>Instructions</th></tr></thead>
-<tbody>${rows}</tbody>
-</table>
-</body></html>`;
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+function PrescriptionMedicineTable({ items }) {
+  return (
+    <div className="overflow-x-auto p-4">
+      <table className="min-w-full border-collapse border border-slate-300 text-left text-sm">
+        <thead><tr className="bg-emerald-50 text-xs font-extrabold uppercase tracking-[0.14em] text-emerald-950">
+          {['Medicine', 'Strength', 'Dosage', 'Frequency', 'Route', 'Duration', 'Qty', 'Instructions'].map((heading) => <th key={heading} className="border border-slate-300 px-3 py-3">{heading}</th>)}
+        </tr></thead>
+        <tbody className="bg-white text-slate-700">
+          {items.length ? items.map((medicine, index) => (
+            <tr key={medicine.id ?? index}>
+              <td className="border border-slate-300 px-3 py-3 font-medium text-slate-900">{medicine.medicine_name || '-'}</td>
+              <td className="border border-slate-300 px-3 py-3">{medicine.strength || '-'}</td>
+              <td className="border border-slate-300 px-3 py-3">{medicine.dosage || '-'}</td>
+              <td className="border border-slate-300 px-3 py-3">{medicine.frequency || '-'}</td>
+              <td className="border border-slate-300 px-3 py-3">{medicine.route || '-'}</td>
+              <td className="border border-slate-300 px-3 py-3">{medicine.duration || '-'}</td>
+              <td className="border border-slate-300 px-3 py-3">{medicine.quantity ?? '-'}</td>
+              <td className="border border-slate-300 px-3 py-3">{medicine.instructions || '-'}</td>
+            </tr>
+          )) : <tr><td colSpan={8} className="border border-slate-300 px-3 py-6 text-center text-slate-500">No medicines in this prescription.</td></tr>}
+        </tbody>
+      </table>
+      <p className="mt-8 text-sm text-slate-500">Generated from HealthPortal Medical Records</p>
+    </div>
+  );
 }
 
 function getMedicalValue(records, key, appointment = {}) {

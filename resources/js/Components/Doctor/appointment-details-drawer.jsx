@@ -48,6 +48,7 @@ export default function AppointmentDetailsDrawer({
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isOnlinePrescriptionOpen, setIsOnlinePrescriptionOpen] = useState(false);
+  const [isPrescriptionViewOpen, setIsPrescriptionViewOpen] = useState(false);
 
   if (!appointment) return null;
 
@@ -170,7 +171,7 @@ export default function AppointmentDetailsDrawer({
               <button
                 type="button"
                 disabled={prescriptionRecords.length === 0}
-                onClick={() => viewPrescription(prescriptionRecords[0])}
+                onClick={() => setIsPrescriptionViewOpen(true)}
                 className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 View Prescription
@@ -187,6 +188,15 @@ export default function AppointmentDetailsDrawer({
                 setIsOnlinePrescriptionOpen(false);
                 await onMedicalRecordsChanged?.();
               }}
+            />
+          ) : null}
+
+          {isPrescriptionViewOpen ? (
+            <OnlinePrescription
+              appointment={appointment}
+              records={records}
+              readOnly
+              onClose={() => setIsPrescriptionViewOpen(false)}
             />
           ) : null}
 
@@ -239,99 +249,6 @@ export default function AppointmentDetailsDrawer({
       </aside>
     </div>
   );
-}
-
-function viewPrescription(item) {
-  if (!item || typeof window === "undefined") {
-    return;
-  }
-
-  const html = buildPrescriptionPrintableMarkup(item);
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const blobUrl = URL.createObjectURL(blob);
-  const popup = window.open(blobUrl, "_blank", "noopener,noreferrer,width=960,height=1100");
-
-  if (popup) {
-    popup.opener = null;
-    popup.focus();
-  }
-
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-}
-
-function buildPrescriptionPrintableMarkup(item) {
-  const items = Array.isArray(item?.items) ? item.items : [];
-  const medicineRows = items.length
-    ? items.map((medicine) => `
-        <tr>
-          <td>${escapeHtml(medicine.medicineName || medicine.medicine_name || "Medicine")}</td>
-          <td>${escapeHtml(medicine.strength || "-")}</td>
-          <td>${escapeHtml(medicine.dosage || "-")}</td>
-          <td>${escapeHtml(medicine.frequency || "-")}</td>
-          <td>${escapeHtml(medicine.route || "-")}</td>
-          <td>${escapeHtml(medicine.duration || "-")}</td>
-          <td>${escapeHtml(medicine.quantity ?? "-")}</td>
-          <td>${escapeHtml(medicine.instructions || "-")}</td>
-        </tr>`).join("")
-    : `<tr><td colspan="8">No medicines in this prescription.</td></tr>`;
-
-  return `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${escapeHtml(item?.title || "Prescription")}</title>
-<style>
-body { font-family: Arial, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 30px; }
-.sheet { max-width: 960px; margin: 0 auto; background: #fff; border-radius: 20px; border: 1px solid #dbe4ee; padding: 30px; box-shadow: 0 24px 80px rgba(15,23,42,.12) }
-.eyebrow { font-size: 11px; font-weight: 800; color: #047857; text-transform: uppercase; letter-spacing: .24em; }
-h1 { margin: 12px 0 8px; font-size: 30px; color: #0f172a; }
-.meta { color: #475569; font-size: 14px; line-height: 1.8; }
-.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 22px 0 26px; }
-.card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; background: #f8fafc; }
-.label { font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #64748b; }
-.value { margin-top: 8px; font-size: 14px; font-weight: 700; color: #0f172a; white-space: pre-wrap; }
-.table { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; margin-top: 16px; }
-.table th { background: #ecfdf5; color: #064e3b; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 11px; border: 1px solid #cbd5e1; text-align: left; }
-.table td { padding: 11px; border: 1px solid #cbd5e1; font-size: 12px; color: #334155; }
-.footer { margin-top: 28px; font-size: 12px; color: #64748b; }
-</style>
-</head>
-<body>
-<div class="sheet">
-<div class="eyebrow">Prescription</div>
-<h1>${escapeHtml(item?.title || "Online Prescription")}</h1>
-<div class="meta">
-<p><strong>Doctor:</strong> ${escapeHtml(item?.doctorName || "Doctor")}</p>
-<p><strong>Patient:</strong> ${escapeHtml(item?.patientName || "Patient")}</p>
-<p><strong>Date:</strong> ${escapeHtml(item?.date || item?.issuedAt || "Not set")}</p>
-<p><strong>Follow-up:</strong> ${escapeHtml(item?.followUpInDays ? `${item.followUpInDays} day(s)` : "Not specified")}</p>
-</div>
-<div class="card" style="margin-top:16px">
-<div class="label">Clinical Notes</div>
-<div class="value">${escapeHtml(item?.summary || "No notes available")}</div>
-</div>
-<table class="table">
-<thead>
-<tr>
-<th>Medicine</th><th>Strength</th><th>Dosage</th><th>Frequency</th><th>Route</th><th>Duration</th><th>Qty</th><th>Instructions</th>
-</tr>
-</thead>
-<tbody>${medicineRows}</tbody>
-</table>
-<div class="footer">Generated from HealthPortal Medical Records</div>
-</div>
-</body>
-</html>`;
-}
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function Info({ label, value }) {

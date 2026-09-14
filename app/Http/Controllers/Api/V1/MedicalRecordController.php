@@ -30,6 +30,7 @@ class MedicalRecordController extends Controller
             'doctor.user',
             'patient.user',
             'medicalRecord',
+            'appointment.payment',
             'items',
         ])->latest('issued_at')->latest();
 
@@ -206,6 +207,7 @@ class MedicalRecordController extends Controller
             'notes' => ['nullable', 'string'],
             'followUpInDays' => ['nullable', 'integer', 'min:1', 'max:365'],
             'items' => ['required', 'array', 'min:1'],
+            'items.*.id' => ['nullable', 'integer'],
             'items.*.medicine_name' => ['required', 'string', 'min:1'],
             'items.*.strength' => ['required', 'string', 'min:1'],
             'items.*.dosage' => ['required', 'string', 'min:1'],
@@ -262,10 +264,20 @@ class MedicalRecordController extends Controller
                 'follow_up_in_days' => $data['followUpInDays'] ?? null,
             ])->save();
 
-            $prescription->items()->delete();
+            $keptItemIds = [];
 
             foreach ($data['items'] as $item) {
-                $prescription->items()->create([
+                $prescriptionItem = filled($item['id'] ?? null)
+                    ? $prescription->items()->whereKey($item['id'])->first()
+                    : $prescription->items()->make();
+
+                if (! $prescriptionItem) {
+                    throw ValidationException::withMessages([
+                        'items' => ['One or more prescription items do not belong to this prescription.'],
+                    ]);
+                }
+
+                $prescriptionItem->forceFill([
                     'medicine_name' => trim((string) ($item['medicine_name'] ?? '')),
                     'strength' => trim((string) ($item['strength'] ?? '')),
                     'dosage' => trim((string) ($item['dosage'] ?? '')),
@@ -274,21 +286,30 @@ class MedicalRecordController extends Controller
                     'duration' => trim((string) ($item['duration'] ?? '')),
                     'quantity' => (int) ($item['quantity'] ?? 0),
                     'instructions' => trim((string) ($item['instructions'] ?? '')),
-                ]);
+                ])->save();
+
+                $keptItemIds[] = $prescriptionItem->id;
             }
+
+            $prescription->items()->whereNotIn('id', $keptItemIds)->delete();
 
             return $prescription->loadMissing([
                 'doctor.user',
                 'patient.user',
                 'medicalRecord',
+                'appointment.payment',
                 'items',
             ]);
         });
 
+        $wasUpdated = $request->isMethod('put');
+
         return response()->json([
-            'message' => 'Prescription saved successfully.',
+            'message' => $wasUpdated
+                ? 'Prescription updated successfully.'
+                : 'Prescription saved successfully.',
             'record' => $this->formatPrescription($record),
-        ], 201);
+        ], $wasUpdated ? 200 : 201);
     }
 
     public function storeDocument(Request $request, string $appointmentId): JsonResponse
@@ -409,8 +430,39 @@ class MedicalRecordController extends Controller
         return [
             'id' => (string) $prescription->id,
             'title' => $prescription->prescription_no,
+            'documentType' => 'prescription',
+            'status' => $prescription->status,
             'doctorName' => $prescription->doctor?->user?->name ?? 'Doctor',
             'patientName' => $prescription->patient?->user?->name ?? 'Patient',
+            'doctor' => [
+                'id' => $prescription->doctor_id ? (string) $prescription->doctor_id : null,
+                'name' => $prescription->doctor?->user?->name ?? 'Doctor',
+                'email' => $prescription->doctor?->user?->email,
+                'phone' => $prescription->doctor?->user?->phone,
+                'specialty' => $prescription->doctor?->specialty,
+                'licenseNo' => $prescription->doctor?->license_no,
+                'chamberAddress' => $prescription->doctor?->chamber_address,
+            ],
+            'patient' => [
+                'id' => $prescription->patient_id ? (string) $prescription->patient_id : null,
+                'name' => $prescription->patient?->user?->name ?? 'Patient',
+                'email' => $prescription->patient?->user?->email,
+                'phone' => $prescription->patient?->user?->phone,
+                'mrn' => $prescription->patient?->mrn,
+                'dateOfBirth' => $prescription->patient?->date_of_birth?->toDateString(),
+                'gender' => $prescription->patient?->gender,
+            ],
+            'appointment' => [
+                'appointmentNo' => $prescription->appointment?->appointment_no,
+                'appointmentDate' => $prescription->appointment?->appointment_date?->toDateString(),
+                'startTime' => $prescription->appointment?->start_time,
+                'paymentStatus' => $prescription->appointment?->payment?->status
+                    ?? $prescription->appointment?->payment_status,
+                'payment' => [
+                    'status' => $prescription->appointment?->payment?->status,
+                    'method' => $prescription->appointment?->payment?->method,
+                ],
+            ],
             'summary' => $prescription->notes,
             'date' => $prescription->issued_at?->toDateString() ?? $prescription->created_at->toDateString(),
             'issuedAt' => $prescription->issued_at?->toISOString(),

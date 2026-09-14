@@ -24,7 +24,10 @@ async function parseJsonResponse(response) {
   const result = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(result.message ?? "Request failed.");
+    const validationMessage = Object.values(result.errors ?? {})
+      .flat()
+      .find(Boolean);
+    throw new Error(validationMessage ?? result.message ?? "Request failed.");
   }
 
   return result;
@@ -90,6 +93,30 @@ export async function savePrescriptionRecord(
     `/consultations/${appointmentId}/prescriptions`,
     {
       method: "POST",
+      body: JSON.stringify({
+        prescription,
+        notes,
+        followUpInDays,
+        items,
+      }),
+    },
+    token,
+  );
+
+  const result = await parseJsonResponse(response);
+  notifyMedicalRecordsUpdated();
+  return result.record;
+}
+
+export async function updatePrescriptionRecord(
+  { appointmentId, prescription, notes, followUpInDays, items },
+  role = "doctor",
+) {
+  const token = resolveToken(role);
+  const response = await apiFetch(
+    `/consultations/${appointmentId}/prescriptions`,
+    {
+      method: "PUT",
       body: JSON.stringify({
         prescription,
         notes,
