@@ -53,12 +53,16 @@ class SslCommerzPaymentController extends Controller
         }
 
         $payment = $this->preparePayment($appointment, $amount);
+        $returnBaseUrl = $this->returnBaseUrlForRequest($request);
         $result = $this->payments->initializeGateway($this->gatewayPayload($appointment, $payment));
 
         if (! $result['success']) {
             $payment->update([
                 'status' => 'failed',
-                'gateway_response' => $result['data'] ?? ['message' => $result['message']],
+                'gateway_response' => array_merge(
+                    $result['data'] ?? ['message' => $result['message']],
+                    ['_return_base_url' => $returnBaseUrl],
+                ),
             ]);
 
             return response()->json([
@@ -69,7 +73,10 @@ class SslCommerzPaymentController extends Controller
 
         $payment->update([
             'status' => 'pending',
-            'gateway_response' => $result['data'] ?? [],
+            'gateway_response' => array_merge(
+                $result['data'] ?? [],
+                ['_return_base_url' => $returnBaseUrl],
+            ),
         ]);
 
         return response()->json([
@@ -310,9 +317,13 @@ class SslCommerzPaymentController extends Controller
             (float) $payment->total_amount,
             $payment->currency
         );
+        $returnBaseUrl = $this->returnBaseUrlForPayment($payment);
         $gatewayData = array_merge(
             $request->all(),
-            ['validation' => $validation['data'] ?? []]
+            [
+                'validation' => $validation['data'] ?? [],
+                '_return_base_url' => $returnBaseUrl,
+            ]
         );
 
         if (! $validation['valid']) {
@@ -354,7 +365,10 @@ class SslCommerzPaymentController extends Controller
         if ($payment && strtolower($payment->status) !== 'paid') {
             $payment->update([
                 'status' => $status,
-                'gateway_response' => $request->all(),
+                'gateway_response' => array_merge(
+                    $request->all(),
+                    ['_return_base_url' => $this->returnBaseUrlForPayment($payment)],
+                ),
             ]);
         }
 
@@ -372,10 +386,70 @@ class SslCommerzPaymentController extends Controller
             'appointmentId' => $payment?->appointment?->appointment_no,
         ]));
 
-        $url = rtrim((string) config('app.frontend_url'), '/')
+        $url = $this->returnBaseUrlForPayment($payment)
             .'/payment/return?'.$query;
 
         return redirect()->away($url);
+    }
+
+    private function returnBaseUrlForRequest(Request $request): string
+    {
+        $url = rtrim($request->root(), '/');
+
+        return $this->sanitizeReturnBaseUrl($url)
+            ?? rtrim((string) config('app.frontend_url'), '/');
+    }
+
+    private function returnBaseUrlForPayment(?Payment $payment): string
+    {
+        $storedUrl = data_get($payment?->gateway_response, '_return_base_url');
+
+        return $this->sanitizeReturnBaseUrl(is_string($storedUrl) ? $storedUrl : null)
+            ?? rtrim((string) config('app.frontend_url'), '/');
+    }
+
+    private function sanitizeReturnBaseUrl(?string $url): ?string
+    {
+        if (! $url || ! filter_var($url, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+
+        $parts = parse_url($url);
+        if (! in_array($parts['scheme'] ?? null, ['http', 'https'], true) || empty($parts['host'])) {
+            return null;
+        }
+
+        $host = strtolower($parts['host']);
+        $hostWithPort = $host.(isset($parts['port']) ? ':'.$parts['port'] : '');
+        $allowedHosts = collect([
+            config('app.url'),
+            config('app.frontend_url'),
+            ...config('sanctum.stateful', []),
+        ])->filter()->map(function (string $candidate): string {
+            $candidate = strtolower(trim($candidate));
+
+            if (str_contains($candidate, '://')) {
+                $candidateParts = parse_url($candidate);
+
+                return strtolower(($candidateParts['host'] ?? '')
+                    .(isset($candidateParts['port']) ? ':'.$candidateParts['port'] : ''));
+            }
+
+            return trim($candidate, '/');
+        });
+
+        if (! $allowedHosts->contains($hostWithPort) && ! $allowedHosts->contains($host)) {
+            return null;
+        }
+
+        $authority = $parts['scheme'].'://'.$host;
+        if (isset($parts['port'])) {
+            $authority .= ':'.$parts['port'];
+        }
+
+        $path = isset($parts['path']) ? '/'.trim($parts['path'], '/') : '';
+
+        return rtrim($authority.$path, '/');
     }
 
     private function markPaymentAsPaid(Payment $payment, array $gatewayResponse): void
