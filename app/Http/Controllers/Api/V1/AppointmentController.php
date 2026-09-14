@@ -753,6 +753,10 @@ class AppointmentController extends Controller
             'doctor' => $this->formatDoctor($doctor),
             'appointmentDate' => $appointmentDate,
             'slotTime' => $slotTime,
+            'consultationType' => $this->displayLabel($appointment->consultation_type, 'Consultation'),
+            'reason' => $appointment->reason,
+            'symptoms' => $appointment->symptoms,
+            'notes' => $appointment->doctor_notes,
             'status' => $appointment->status,
             'paymentStatus' => $paymentStatus,
             'paymentAmountCents' => $this->appointmentAmount($appointment),
@@ -766,6 +770,7 @@ class AppointmentController extends Controller
             'isChangeRequestPending' => $hasPendingChangeRequest,
             'changeRequest' => $hasPendingChangeRequest ? $changeRequest : null,
             'cancellationReason' => $appointment->cancel_reason,
+            'cancelledAt' => $appointment->cancelled_at?->toISOString(),
             'refund' => $payment ? $this->formatRefund($payment) : null,
         ], $overrides);
     }

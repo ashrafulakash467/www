@@ -9,6 +9,7 @@ import DashboardHeader from "@/Components/Dashboard/header";
 import MyAppointmentPage from "./myappointment-page";
 import TodayAppointments from "./todayAppointments";
 import UpcomingAppointment from "./upcomingAppointment";
+import AppointmentHistory from "./appointmenthistory";
 import PendingRequestPage from "./pending-request";
 import PatientRecordsPage from "./patientRecords";
 import UploadDocumentPage from "./upload-document";
@@ -335,7 +336,7 @@ export default function DoctorDashboardClient() {
   }
 
   const isActiveTabLoading =
-    (["today", "upcoming", "pending", "earnings"].includes(activeTab) &&
+    (["today", "upcoming", "history", "pending", "earnings"].includes(activeTab) &&
       isAppointmentsLoading) ||
     (activeTab === "records" && isRecordsLoading) ||
     (activeTab === "documents" &&
@@ -407,6 +408,15 @@ export default function DoctorDashboardClient() {
         {activeTab === "upcoming" && (
           <UpcomingAppointment
             appointments={upcomingAppointments}
+            isLoading={isAppointmentsLoading}
+            records={records}
+            onMedicalRecordsChanged={loadMedicalRecords}
+          />
+        )}
+
+        {activeTab === "history" && (
+          <AppointmentHistory
+            appointments={appointments}
             isLoading={isAppointmentsLoading}
             records={records}
             onMedicalRecordsChanged={loadMedicalRecords}

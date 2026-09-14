@@ -1,6 +1,7 @@
 import { useState } from "react";
 import OnlinePrescription from "./onlinePrescription";
 import { saveDocumentRecord } from "@/utils/medical-records";
+import { printAppointments } from "@/Components/Common/AppointmentPrint";
 
 const DOCUMENT_CATEGORIES = [
   { title: "Prescription", type: "pdf" },
@@ -129,9 +130,10 @@ export default function AppointmentDetailsDrawer({
               {patient.name || appointment.patientName || "Patient"}
             </h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50" aria-label="Close appointment details">
-            X
-          </button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => printAppointments(appointment, "Appointment Details")} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-700">Print</button>
+            <button type="button" onClick={onClose} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50" aria-label="Close appointment details">X</button>
+          </div>
         </div>
 
         <div className="flex-1 space-y-5 pt-5">

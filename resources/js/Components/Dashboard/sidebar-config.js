@@ -3,6 +3,7 @@ export const doctorSidebarItems = [
   { key: "dashboard", label: "Dashboard", icon: "dashboard" },
   { key: "today", label: "Today's Appointments", icon: "calendar" },
   { key: "upcoming", label: "Upcoming Appointments", icon: "calendar" },
+  { key: "history", label: "Appointment History", icon: "appointments" },
   { key: "pending", label: "Pending Requests", icon: "clipboard" },
   { key: "records", label: "Patient Records", icon: "records" },
   { key: "documents", label: "Documents", icon: "upload" },

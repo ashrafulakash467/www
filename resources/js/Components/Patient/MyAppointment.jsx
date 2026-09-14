@@ -551,7 +551,7 @@ export default function MyAppointmentPage({
                                   ? "Submitting request..."
                                   : "Cancelling..."
                                 : appointment.canRequestCancellation
-                                  ? "Submit cancellation request"
+                                  ? "Submit cancel & Refund request"
                                   : "Cancel appointment"}
                             </button>
 
