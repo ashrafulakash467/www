@@ -542,37 +542,48 @@ function openDocument(item) {
     return;
   }
 
-  if (item.fileUrl) {
-    window.open(item.fileUrl, "_blank", "noopener,noreferrer");
+  if (hasDocumentUrl(item)) {
+    const popup = window.open(item.fileUrl, "_blank", "noopener,noreferrer");
+
+    if (!popup) {
+      const link = document.createElement("a");
+      link.href = item.fileUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.click();
+    }
+
     return;
   }
 
   openPrintableWindow(item);
 }
 
-function downloadDocument(item) {
+async function downloadDocument(item) {
   if (typeof window === "undefined") {
     return;
   }
 
-  if (item.fileUrl) {
-    const link = document.createElement("a");
-    link.href = item.fileUrl;
-    link.download = item.fileName || `${slugify(item.title || "document")}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+  if (hasDocumentUrl(item)) {
+    const filename = item.fileName || `${slugify(item.title || "document")}.pdf`;
+
+    try {
+      const response = await fetch(item.fileUrl, { credentials: "include" });
+      if (!response.ok) throw new Error("Could not download document.");
+
+      const blobUrl = URL.createObjectURL(await response.blob());
+      triggerDownload(blobUrl, filename);
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch {
+      triggerDownload(item.fileUrl, filename);
+    }
+
     return;
   }
 
   const blob = new Blob([buildDocumentText(item)], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${slugify(item.title || "document")}.txt`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  triggerDownload(url, `${slugify(item.title || "document")}.txt`);
   window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
 
@@ -585,7 +596,7 @@ function printDocument(item) {
 }
 
 function openPrintableWindow(item, shouldPrint = false) {
-  const popup = window.open("", "_blank", "noopener,noreferrer,width=960,height=1100");
+  const popup = window.open("", "_blank", "width=960,height=1100");
 
   if (!popup) {
     return;
@@ -594,11 +605,26 @@ function openPrintableWindow(item, shouldPrint = false) {
   popup.document.open();
   popup.document.write(buildPrintableMarkup(item));
   popup.document.close();
+  popup.opener = null;
 
   if (shouldPrint) {
     popup.focus();
     window.setTimeout(() => popup.print(), 300);
   }
+}
+
+function hasDocumentUrl(item) {
+  return Boolean(item?.fileUrl && item.fileUrl !== "#");
+}
+
+function triggerDownload(url, filename) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 function buildPrintableMarkup(item) {
