@@ -1,0 +1,180 @@
+<mxfile host="app.diagrams.net" agent="ChatGPT">
+  <diagram id="healthcare-swimlane-001" name="Patient Appointment &amp; Consultation Workflow">
+    <mxGraphModel dx="1030" dy="562" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1754" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-385" parent="1" style="ellipse;aspect=fixed;html=1;fillColor=#111827;strokeColor=#111827;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="670" y="85" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-386" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#475569;strokeWidth=1.5;spacing=8;" value="Doctor opens an assigned appointment" vertex="1">
+          <mxGeometry height="58" width="300" x="540" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-387" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FFF7ED;strokeColor=#EA580C;strokeWidth=1.5;fontStyle=1;spacing=4;" value="Authenticated doctor owns appointment?" vertex="1">
+          <mxGeometry height="104" width="190" x="595" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-388" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FEE2E2;strokeColor=#DC2626;strokeWidth=1.5;fontStyle=1;spacing=8;" value="Return forbidden or appointment-not-found error" vertex="1">
+          <mxGeometry height="62" width="300" x="840" y="256" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-389" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FFF7ED;strokeColor=#EA580C;strokeWidth=1.5;fontStyle=1;spacing=4;" value="Documentation type?" vertex="1">
+          <mxGeometry height="104" width="190" x="595" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-390" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#E2E8F0;strokeColor=#64748B;strokeWidth=1;fontStyle=1;fontSize=13;" value="CLINICAL NOTE" vertex="1">
+          <mxGeometry height="34" width="360" x="50" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-391" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#475569;strokeWidth=1.5;spacing=8;" value="Enter required clinical memo and optional complaint, diagnosis, plan, attachments" vertex="1">
+          <mxGeometry height="78" width="300" x="80" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-392" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" value="Validate request; if valid, upsert consultation medical record and timestamp" vertex="1">
+          <mxGeometry height="68" width="300" x="80" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-393" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#E2E8F0;strokeColor=#64748B;strokeWidth=1;fontStyle=1;fontSize=13;" value="PRESCRIPTION" vertex="1">
+          <mxGeometry height="34" width="360" x="510" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-394" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#475569;strokeWidth=1.5;spacing=8;" value="Enter ≥1 medicine with strength, dosage, frequency, route, duration, and quantity" vertex="1">
+          <mxGeometry height="78" width="300" x="540" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-395" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" value="Validate request; in one transaction, upsert record/prescription and items; delete removed items" vertex="1">
+          <mxGeometry height="86" width="330" x="525" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-396" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#E2E8F0;strokeColor=#64748B;strokeWidth=1;fontStyle=1;fontSize=13;" value="DOCUMENT" vertex="1">
+          <mxGeometry height="34" width="360" x="970" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-397" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#475569;strokeWidth=1.5;spacing=8;" value="Enter title/type and optional file or URL, notes, reference, date, and amount" vertex="1">
+          <mxGeometry height="78" width="300" x="1000" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-398" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" value="Validate request; if a file is supplied, check type/size and store it under the appointment number" vertex="1">
+          <mxGeometry height="78" width="310" x="995" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-399" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" value="Append attachment metadata to consultation medical record" vertex="1">
+          <mxGeometry height="68" width="290" x="1005" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-400" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FFF7ED;strokeColor=#EA580C;strokeWidth=1.5;fontStyle=1;spacing=4;" value="Request valid and save successful?" vertex="1">
+          <mxGeometry height="104" width="190" x="595" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-401" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FEE2E2;strokeColor=#DC2626;strokeWidth=1.5;fontStyle=1;spacing=8;" value="Show validation errors and keep form data" vertex="1">
+          <mxGeometry height="62" width="290" x="122" y="882" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-402" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=1.5;fontStyle=1;spacing=8;" value="Return saved/updated record" vertex="1">
+          <mxGeometry height="58" width="270" x="555" y="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-403" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#475569;strokeWidth=1.5;spacing=8;" value="Patient, doctor, or admin opens medical records" vertex="1">
+          <mxGeometry height="58" width="280" x="550" y="1110" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-404" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" value="Determine role and apply record scope" vertex="1">
+          <mxGeometry height="62" width="270" x="555" y="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-405" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" value="Patient: own records · Doctor: own consultations · Admin: all records" vertex="1">
+          <mxGeometry height="70" width="350" x="515" y="1301" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-406" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=#0F172A;align=center;verticalAlign=middle;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=1.5;fontStyle=1;spacing=8;" value="Aggregate prescriptions, diagnostics, notes, uploads, and payment invoices" vertex="1">
+          <mxGeometry height="64" width="330" x="525" y="1400" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-410" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-385" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-386" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-411" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-386" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-387" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-412" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-387" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-388" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-413" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-388" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="915" y="1480" />
+              <mxPoint x="690" y="1480" />
+            </Array>
+            <mxPoint x="690" y="1490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-414" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-387" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-389" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-415" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-389" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="DrbCEHyg1Wv5O79zt6Mz-391" value="Note">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="595" y="450" />
+              <mxPoint x="250" y="450" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-416" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-389" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-394" value="Prescription">
+          <mxGeometry relative="1" x="-0.6667" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-417" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-389" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-397" value="Document">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-418" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-391" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-392" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-419" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-394" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-395" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-420" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-397" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-398" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-421" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-398" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-399" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-422" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-392" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="DrbCEHyg1Wv5O79zt6Mz-400" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="230" y="860" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-423" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-395" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-400" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-424" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-399" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-400" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-425" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-400" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-401" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-426" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-401" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-389" value="Correct data">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="916" />
+              <mxPoint x="190" y="432" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-427" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-400" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-402" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-428" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-402" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-403" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-429" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-403" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-404" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-430" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-404" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-405" value="Authorized">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-431" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-405" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-406" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-432" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-406" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.4;fontFamily=Helvetica;fontSize=11;fontColor=#334155;" target="DrbCEHyg1Wv5O79zt6Mz-434" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="900" y="1432.0000000000005" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-433" parent="1" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#ff0000;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="675" y="1520" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-434" parent="1" style="shape=line;html=1;strokeWidth=6;strokeColor=#ff0000;" value="" vertex="1">
+          <mxGeometry height="10" width="200" x="590" y="1493" as="geometry" />
+        </mxCell>
+        <mxCell id="DrbCEHyg1Wv5O79zt6Mz-435" edge="1" parent="1" source="DrbCEHyg1Wv5O79zt6Mz-434" style="edgeStyle=orthogonalEdgeStyle;html=1;verticalAlign=bottom;endArrow=open;endSize=8;strokeColor=#ff0000;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="DrbCEHyg1Wv5O79zt6Mz-433" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="690" y="1573" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

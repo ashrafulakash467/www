@@ -337,7 +337,7 @@ export default function PrescriptionPrint({
           <MetaCard label="Status" value={firstValue(prescriptionData.status) || "Issued"} />
         </section>
 
-        <footer className="prescription-footer border-t border-slate-200 pt-4 text-xs text-slate-500">Generated from HealthPortal Medical Records</footer>
+        <footer className="prescription-footer border-t border-slate-200 pt-4 text-xs text-slate-500">Health Care .</footer>
       </div>
     </article>
   );
