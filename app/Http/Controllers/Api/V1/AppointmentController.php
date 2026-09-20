@@ -579,6 +579,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+
     private function appointmentQueryForUser(?Authenticatable $user): ?Builder
     {
         if (! $user instanceof User) {
