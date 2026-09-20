@@ -88,6 +88,8 @@ export default function DoctorDashboardClient() {
   const [isDoctorLoading, setIsDoctorLoading] = useState(true);
   const [isAppointmentsLoading, setIsAppointmentsLoading] = useState(true);
   const [isRecordsLoading, setIsRecordsLoading] = useState(true);
+  const [isEarningsLoading, setIsEarningsLoading] = useState(true);
+  const [totalEarnings, setTotalEarnings] = useState(0);
   const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("healthcare.doctor.activeTab") ?? "dashboard");
   const [recordCategory, setRecordCategory] = useState("prescriptions");
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
@@ -121,6 +123,19 @@ export default function DoctorDashboardClient() {
     }
   }
 
+  async function loadEarningsSummary() {
+    try {
+      const response = await apiFetch("/doctor/earnings/summary");
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setTotalEarnings(Number(result.data?.total_earnings ?? 0));
+      }
+    } catch (error) {
+      console.error("Failed to fetch earnings summary:", error);
+    }
+  }
+
   useEffect(() => {
     async function loadDoctor() {
       const token = getStoredToken("doctor");
@@ -140,6 +155,7 @@ export default function DoctorDashboardClient() {
         return Promise.all([
           loadAppointments(token).finally(() => setIsAppointmentsLoading(false)),
           loadMedicalRecords().finally(() => setIsRecordsLoading(false)),
+          loadEarningsSummary().finally(() => setIsEarningsLoading(false)),
         ]);
       }
 
@@ -163,6 +179,7 @@ export default function DoctorDashboardClient() {
         setIsDoctorLoading(false);
         setIsAppointmentsLoading(false);
         setIsRecordsLoading(false);
+        setIsEarningsLoading(false);
       }
     }
 
@@ -251,9 +268,6 @@ export default function DoctorDashboardClient() {
   const pendingRequests = appointments.filter(
     (appointment) => isPendingRequest(appointment),
   );
-  const paidAppointmentTotal = appointments.filter(
-    (appointment) => (appointment.paymentStatus ?? "").toLowerCase() === "paid",
-  ).length * 12500;
   const notificationItems = notificationsSeed.map((item, index) => ({
     ...item,
     id: `${item.id}-${index}`,
@@ -378,7 +392,8 @@ export default function DoctorDashboardClient() {
             todayAppointments={todayAppointments}
             upcomingAppointments={upcomingAppointments}
             pendingRequests={pendingRequests}
-            paidAppointmentTotal={paidAppointmentTotal}
+            summary={{ earningsCents: Math.round(totalEarnings * 100), currency: "BDT" }}
+            isEarningsLoading={isEarningsLoading}
             notifications={notificationItems}
             workflowSteps={workflowSteps}
             onNavigateSection={handleTabChange}

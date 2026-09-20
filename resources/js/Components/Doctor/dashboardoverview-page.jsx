@@ -73,6 +73,7 @@ export default function DashboardOverviewPage({
   isDoctorLoading = false,
   isAppointmentsLoading = false,
   isRecordsLoading = false,
+  isEarningsLoading = false,
   summary = {},
   todayAppointments = [],
   upcomingAppointments = [],
@@ -192,7 +193,7 @@ export default function DashboardOverviewPage({
           value={earningsValue}
           detail=""
           tone="green"
-          isLoading={isAppointmentsLoading}
+          isLoading={isEarningsLoading}
           onClick={() => onNavigateTab("earnings")}
         />
         <MetricCard
