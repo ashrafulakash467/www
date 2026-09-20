@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\DoctorEarningController;
 use App\Http\Controllers\Api\V1\MedicalRecordController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\RolePermissionController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SslCommerzPaymentController;
 use App\Http\Controllers\Api\V1\SupportController;
@@ -94,6 +95,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::patch('admin/notifications/read-all', [AdminNotificationController::class, 'markAllRead']);
         Route::patch('admin/notifications/{notificationId}/read', [AdminNotificationController::class, 'markRead']);
         Route::delete('admin/notifications/{notificationId}', [AdminNotificationController::class, 'destroy']);
+        Route::prefix('admin/access-control')->middleware('permission:manage-roles')->group(function (): void {
+            Route::get('/', [RolePermissionController::class, 'index']);
+            Route::get('users', [RolePermissionController::class, 'users']);
+            Route::post('roles', [RolePermissionController::class, 'storeRole']);
+            Route::put('roles/{role}', [RolePermissionController::class, 'updateRole']);
+            Route::delete('roles/{role}', [RolePermissionController::class, 'destroyRole']);
+            Route::put('roles/{role}/permissions', [RolePermissionController::class, 'syncRolePermissions']);
+            Route::put('users/{user}/roles', [RolePermissionController::class, 'syncUserRoles']);
+        });
         Route::patch('admin/refunds/{payment}/approve', [AdminPaymentController::class, 'approveRefund'])->whereNumber('payment');
         Route::patch('admin/refunds/{payment}/reject', [AdminPaymentController::class, 'rejectRefund'])->whereNumber('payment');
         Route::post('admin/refunds/{payment}/process', [AdminPaymentController::class, 'processRefund'])->whereNumber('payment');

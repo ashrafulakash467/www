@@ -46,6 +46,22 @@ class AccessControlSeeder extends Seeder
             'view-audit-logs',
             'view-earnings',
             'manage-schedule',
+            'dashboard.view',
+            'doctors.view', 'doctors.create', 'doctors.edit', 'doctors.delete', 'doctors.verify', 'doctors.approve', 'doctors.reject', 'doctors.manage',
+            'patients.view', 'patients.create', 'patients.edit', 'patients.delete', 'patients.manage',
+            'appointments.view', 'appointments.create', 'appointments.edit', 'appointments.delete', 'appointments.approve', 'appointments.reject', 'appointments.manage', 'appointments.print', 'appointments.export',
+            'payments.manage', 'payments.print',
+            'refunds.manage', 'refunds.export',
+            'earnings.view', 'earnings.manage', 'earnings.export',
+            'medical-records.view', 'medical-records.create', 'medical-records.edit', 'medical-records.delete', 'medical-records.manage', 'medical-records.print', 'medical-records.export',
+            'prescriptions.view', 'prescriptions.create', 'prescriptions.edit', 'prescriptions.delete', 'prescriptions.manage', 'prescriptions.print',
+            'support.view', 'support.assign', 'support.manage',
+            'reports.view', 'reports.create', 'reports.manage', 'reports.print', 'reports.export',
+            'notifications.view', 'notifications.manage', 'notifications.delete',
+            'users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign', 'users.manage',
+            'roles.view', 'roles.create', 'roles.edit', 'roles.delete', 'roles.assign', 'roles.manage',
+            'audit.view', 'audit.export',
+            'settings.view', 'settings.edit', 'settings.manage',
         ];
 
         foreach ($permissions as $permission) {

@@ -62,13 +62,6 @@ const auditSeed = [
   { id: "audit-3", action: "Role permissions changed", actor: "Super Admin", time: "32 minutes ago" },
 ];
 
-const rolesSeed = [
-  { role: "Super Admin", permissions: ["All access", "Manage roles", "View audit logs", "Change settings"] },
-  { role: "Operations Admin", permissions: ["Doctors", "Appointments", "Reports"] },
-  { role: "Finance Admin", permissions: ["Payments", "Refunds", "Reports"] },
-  { role: "Support Admin", permissions: ["Appointments", "Notifications", "CMS updates"] },
-];
-
 const systemSettingsSeed = {
   mfaEnabled: true,
   doctorAutoReview: false,
@@ -144,7 +137,6 @@ export default function AdminDashboard() {
   const [appointments, setAppointments] = useState(appointmentsSeed);
   const [payments, setPayments] = useState(paymentsSeed);
   const [content, setContent] = useState(contentSeed);
-  const [roles, setRoles] = useState(rolesSeed);
   const [logs, setLogs] = useState(auditSeed);
 
   useEffect(() => {
@@ -235,10 +227,6 @@ export default function AdminDashboard() {
 
       if (Array.isArray(result.content)) {
         setContent(result.content);
-      }
-
-      if (Array.isArray(result.roles)) {
-        setRoles(result.roles);
       }
 
       if (Array.isArray(result.logs)) {
@@ -733,7 +721,7 @@ export default function AdminDashboard() {
               onMessage={setStatusMessage}
             />
           )}
-          {activeTab === "roles" && <RolesPage roles={roles} />}
+          {activeTab === "roles" && <RolesPage />}
           {activeTab === "doctor-earnings" && <DoctorEarning />}
           {activeTab === "settings" && (
             <SettingsPage settings={systemSettings} onToggleSetting={toggleSetting} />

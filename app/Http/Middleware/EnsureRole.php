@@ -30,7 +30,12 @@ class EnsureRole
             ->values()
             ->all();
 
-        if (! $user->hasAnyRole($allowedRoles)) {
+        $hasActiveRole = $user->roles()
+            ->whereIn('name', $allowedRoles)
+            ->where('is_active', true)
+            ->exists();
+
+        if (! $hasActiveRole) {
             abort(response()->json([
                 'message' => 'You do not have permission to access this resource.',
             ], 403));

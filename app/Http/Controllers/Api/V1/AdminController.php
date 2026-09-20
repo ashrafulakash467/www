@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use Spatie\Permission\Models\Role;
 
 class AdminController extends Controller
 {
@@ -174,18 +173,6 @@ class AdminController extends Controller
             ])
             ->values();
 
-        $roles = Role::query()
-            ->with('permissions')
-            ->orderBy('name')
-            ->get()
-            ->map(fn (Role $role): array => [
-                'role' => $this->adminDisplayLabel($role->name, $role->name),
-                'permissions' => $role->permissions->pluck('name')
-                    ->map(fn (string $permission) => $this->adminDisplayLabel($permission, $permission))
-                    ->values(),
-            ])
-            ->values();
-
         return response()->json([
             'appointments' => $appointments,
             'payments' => $payments,
@@ -193,7 +180,6 @@ class AdminController extends Controller
             'reports' => $reports,
             'appointmentRequests' => $appointmentRequests,
             'logs' => $logs,
-            'roles' => $roles,
         ]);
     }
 
