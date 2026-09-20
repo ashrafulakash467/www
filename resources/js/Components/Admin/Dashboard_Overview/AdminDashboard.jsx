@@ -6,6 +6,7 @@ import UsersPage from "../Users/users-page";
 import DoctorsPage from "../Doctors/doctors-page";
 import ReportsPage from "../Doctors/reports-page";
 import AppointmentsPage from "../Appointments/appointments-page";
+import AdminAppointmentHistory from "../Appointments/appointment-history";
 import PaymentsOverview from "../Payments/Overview";
 import AllPayments from "../Payments/AllPayments";
 import SuccessfulPayments from "../Payments/SuccessfulPayments";
@@ -793,6 +794,7 @@ export default function AdminDashboard() {
               onMessage={setStatusMessage}
             />
           )}
+          {activeTab === "appointments-history" && <AdminAppointmentHistory />}
           {(activeTab === "payments" || activeTab === "payments-overview") && <PaymentsOverview />}
           {activeTab === "payments-all" && <AllPayments />}
           {activeTab === "payments-successful" && <SuccessfulPayments />}
