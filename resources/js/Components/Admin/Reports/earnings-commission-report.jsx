@@ -1,0 +1,2 @@
+import ReportView, { createStats } from "./report-view";
+export default function EarningsCommissionReport(props) { return <ReportView {...props} title="Earnings & Commission Report" description="Doctor earnings, admin commission, and revenue split." stats={createStats(["Gross Revenue", "Doctor Earnings", "Admin Commission", "Net Revenue"])} columns={[{ key: "date", label: "Date" }, { key: "doctor", label: "Doctor" }, { key: "gross", label: "Gross" }, { key: "doctorEarning", label: "Doctor Earnings" }, { key: "commission", label: "Admin Commission" }]} />; }

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AdminCommissionController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
+use App\Http\Controllers\Api\V1\AdminReportController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
@@ -83,6 +84,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('admin/payments', [AdminPaymentController::class, 'index']);
         Route::get('admin/payments/{payment}', [AdminPaymentController::class, 'show'])->whereNumber('payment');
         Route::get('admin/refunds', [AdminPaymentController::class, 'refunds']);
+        Route::get('admin/reports/{report}', [AdminReportController::class, 'show']);
         Route::patch('admin/refunds/{payment}/approve', [AdminPaymentController::class, 'approveRefund'])->whereNumber('payment');
         Route::patch('admin/refunds/{payment}/reject', [AdminPaymentController::class, 'rejectRefund'])->whereNumber('payment');
         Route::post('admin/refunds/{payment}/process', [AdminPaymentController::class, 'processRefund'])->whereNumber('payment');

@@ -1,0 +1,2 @@
+import ReportView, { createStats } from "./report-view";
+export default function SupportReport(props) { return <ReportView {...props} title="Support Report" description="Support workload and ticket-resolution status." stats={createStats(["Open", "Pending", "Resolved", "Total Tickets"])} filters={[{ key: "status", label: "Status", options: ["Open", "Pending", "Resolved"] }]} columns={[{ key: "date", label: "Date" }, { key: "ticket", label: "Ticket" }, { key: "requester", label: "Requester" }, { key: "priority", label: "Priority" }, { key: "status", label: "Status" }]} />; }

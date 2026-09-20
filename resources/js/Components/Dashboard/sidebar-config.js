@@ -95,8 +95,8 @@ export const adminSidebarItems = [
     ],
   },
 
-  { key: "content", label: "Content", icon: "content" },
   { key: "reports", label: "Reports", icon: "reports" },
+  { key: "content", label: "Content", icon: "content" },
   { key: "notifications", label: "Notifications", icon: "notifications" },
   { key: "support", label: "Support", icon: "support" },
   { key: "roles", label: "Roles & Permissions", icon: "roles" },

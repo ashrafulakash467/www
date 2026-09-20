@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon, formatCurrency } from "./dashboard-shared";
 import UsersPage from "../Users/users-page";
 import DoctorsPage from "../Doctors/doctors-page";
-import ReportsPage from "../Doctors/reports-page";
+import ReportsPage from "../Reports/reports-page";
 import AppointmentsPage from "../Appointments/appointments-page";
 import AdminAppointmentHistory from "../Appointments/appointment-history";
 import PaymentsOverview from "../Payments/Overview";
@@ -55,12 +55,6 @@ const paymentsSeed = [
 const contentSeed = [
   { id: "cms-1", title: "Homepage Banner", status: "Published", owner: "Marketing" },
   { id: "cms-2", title: "Doctor FAQ", status: "Draft", owner: "Support" },
-];
-
-const reportsSeed = [
-  { id: "rep-1", title: "Daily Revenue Report", status: "Ready", owner: "Finance" },
-  { id: "rep-2", title: "Doctor Verification Report", status: "Pending", owner: "Operations" },
-  { id: "rep-3", title: "Appointment Funnel", status: "Ready", owner: "Analytics" },
 ];
 
 const notificationsSeed = [
@@ -149,7 +143,6 @@ export default function AdminDashboard() {
   const [isReady, setIsReady] = useState(false);
   const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("healthcare.admin.activeTab") ?? "dashboard");
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(appointmentsSeed[0].id);
-  const [selectedReportId, setSelectedReportId] = useState(reportsSeed[0].id);
   const [selectedTicketId, setSelectedTicketId] = useState(supportSeed[0].id);
   const [systemSettings, setSystemSettings] = useState(systemSettingsSeed);
   const [statusMessage, setStatusMessage] = useState("");
@@ -164,7 +157,6 @@ export default function AdminDashboard() {
   const [appointments, setAppointments] = useState(appointmentsSeed);
   const [payments, setPayments] = useState(paymentsSeed);
   const [content, setContent] = useState(contentSeed);
-  const [reports, setReports] = useState(reportsSeed);
   const [notifications, setNotifications] = useState(notificationsSeed);
   const [tickets, setTickets] = useState(supportSeed);
   const [appointmentRequests, setAppointmentRequests] = useState([]);
@@ -260,15 +252,6 @@ export default function AdminDashboard() {
 
       if (Array.isArray(result.content)) {
         setContent(result.content);
-      }
-
-      if (Array.isArray(result.reports) && result.reports.length > 0) {
-        setReports(result.reports);
-        setSelectedReportId((current) =>
-          result.reports.some((report) => report.id === current)
-            ? current
-            : result.reports[0].id,
-        );
       }
 
       if (Array.isArray(result.notifications)) {
@@ -809,13 +792,7 @@ export default function AdminDashboard() {
           {activeTab === "payments-revenue" && <Revenue />}
           {activeTab === "payments-settings" && <PaymentSettings />}
           {activeTab === "content" && <ContentPage content={content} />}
-          {activeTab === "reports" && (
-            <ReportsPage
-              reports={reports}
-              selectedReportId={selectedReportId}
-              onSelectReport={setSelectedReportId}
-            />
-          )}
+          {activeTab === "reports" && <ReportsPage />}
           {activeTab === "notifications" && <NotificationsPage notifications={notifications} />}
           {activeTab === "support" && (
             <SupportPage

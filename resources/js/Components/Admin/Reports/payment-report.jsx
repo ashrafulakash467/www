@@ -1,0 +1,2 @@
+import ReportView, { createStats } from "./report-view";
+export default function PaymentReport(props) { return <ReportView {...props} title="Payment Report" description="Payment outcomes and collected revenue." stats={createStats(["Paid", "Pending", "Failed", "Total Revenue"])} filters={[{ key: "status", label: "Status", options: ["Paid", "Pending", "Failed"] }]} columns={[{ key: "date", label: "Date" }, { key: "transaction", label: "Transaction" }, { key: "patient", label: "Patient" }, { key: "amount", label: "Amount" }, { key: "status", label: "Status" }]} />; }

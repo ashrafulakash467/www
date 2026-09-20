@@ -1,0 +1,2 @@
+import ReportView, { createStats } from "./report-view";
+export default function PatientReport(props) { return <ReportView {...props} title="Patient Report" description="Patient growth, registrations, and active-user trends." stats={createStats(["Total Patients", "New Registrations", "Active Users"])} filters={[{ key: "status", label: "Status", options: ["Active", "Inactive"] }]} columns={[{ key: "patient", label: "Patient" }, { key: "date", label: "Registered" }, { key: "appointments", label: "Appointments" }, { key: "status", label: "Status" }]} />; }
