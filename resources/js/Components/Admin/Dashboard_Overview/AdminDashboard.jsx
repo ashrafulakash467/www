@@ -57,12 +57,6 @@ const contentSeed = [
   { id: "cms-2", title: "Doctor FAQ", status: "Draft", owner: "Support" },
 ];
 
-const notificationsSeed = [
-  { id: "note-1", title: "Pending doctor verification", message: "Three onboarding applications need manual review today." },
-  { id: "note-2", title: "Refund queue update", message: "Two refund requests are waiting for finance approval." },
-  { id: "note-3", title: "System health alert", message: "All services are green. No incident is currently open." },
-];
-
 const auditSeed = [
   { id: "audit-1", action: "Doctor approved", actor: "Admin", time: "2 minutes ago" },
   { id: "audit-3", action: "Role permissions changed", actor: "Super Admin", time: "32 minutes ago" },
@@ -150,7 +144,6 @@ export default function AdminDashboard() {
   const [appointments, setAppointments] = useState(appointmentsSeed);
   const [payments, setPayments] = useState(paymentsSeed);
   const [content, setContent] = useState(contentSeed);
-  const [notifications, setNotifications] = useState(notificationsSeed);
   const [roles, setRoles] = useState(rolesSeed);
   const [logs, setLogs] = useState(auditSeed);
 
@@ -242,10 +235,6 @@ export default function AdminDashboard() {
 
       if (Array.isArray(result.content)) {
         setContent(result.content);
-      }
-
-      if (Array.isArray(result.notifications)) {
-        setNotifications(result.notifications);
       }
 
       if (Array.isArray(result.roles)) {
@@ -738,7 +727,7 @@ export default function AdminDashboard() {
           {activeTab === "payments-settings" && <PaymentSettings />}
           {activeTab === "content" && <ContentPage content={content} />}
           {activeTab === "reports" && <ReportsPage />}
-          {activeTab === "notifications" && <NotificationsPage notifications={notifications} />}
+          {activeTab === "notifications" && <NotificationsPage onNavigate={setActiveTab} />}
           {activeTab === "support" && (
             <SupportPage
               onMessage={setStatusMessage}

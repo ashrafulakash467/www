@@ -194,43 +194,7 @@ class AdminController extends Controller
             'appointmentRequests' => $appointmentRequests,
             'logs' => $logs,
             'roles' => $roles,
-            'notifications' => $this->adminNotifications(),
         ]);
-    }
-
-    private function adminNotifications(): array
-    {
-        $pendingDoctors = Doctor::query()->where('verification_status', 'pending')->count();
-        $pendingRefunds = Payment::query()->where('status', 'refund_requested')->count();
-        $systemHealth = max(80, 100 - ($pendingDoctors * 2));
-
-        $notifications = [];
-
-        if ($pendingDoctors > 0) {
-            $notifications[] = [
-                'id' => 'notify-pending-doctors',
-                'title' => 'Pending doctor verification',
-                'message' => "{$pendingDoctors} onboarding application(s) need manual review.",
-            ];
-        }
-
-        if ($pendingRefunds > 0) {
-            $notifications[] = [
-                'id' => 'notify-refund-queue',
-                'title' => 'Refund queue update',
-                'message' => "{$pendingRefunds} refund request(s) are waiting for finance approval.",
-            ];
-        }
-
-        $notifications[] = [
-            'id' => 'notify-system-health',
-            'title' => 'System health',
-            'message' => $systemHealth >= 95
-                ? 'All services are green. No incident is currently open.'
-                : "System stability score is {$systemHealth}%.",
-        ];
-
-        return $notifications;
     }
 
     private function adminDisplayLabel(?string $value, string $default = ''): string

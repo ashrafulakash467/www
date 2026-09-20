@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AdminCommissionController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
+use App\Http\Controllers\Api\V1\AdminNotificationController;
 use App\Http\Controllers\Api\V1\AdminReportController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -89,6 +90,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('admin/reports/{report}', [AdminReportController::class, 'show']);
         Route::get('admin/support/appointment-requests', [SupportController::class, 'appointmentRequests']);
         Route::get('admin/support/contact-messages', [SupportController::class, 'contactMessages']);
+        Route::get('admin/notifications', [AdminNotificationController::class, 'index']);
+        Route::patch('admin/notifications/read-all', [AdminNotificationController::class, 'markAllRead']);
+        Route::patch('admin/notifications/{notificationId}/read', [AdminNotificationController::class, 'markRead']);
+        Route::delete('admin/notifications/{notificationId}', [AdminNotificationController::class, 'destroy']);
         Route::patch('admin/refunds/{payment}/approve', [AdminPaymentController::class, 'approveRefund'])->whereNumber('payment');
         Route::patch('admin/refunds/{payment}/reject', [AdminPaymentController::class, 'rejectRefund'])->whereNumber('payment');
         Route::post('admin/refunds/{payment}/process', [AdminPaymentController::class, 'processRefund'])->whereNumber('payment');
