@@ -95,12 +95,12 @@ export const adminSidebarItems = [
     ],
   },
 
-  { key: "reports", label: "Reports", icon: "reports" },
-  { key: "content", label: "Content", icon: "content" },
-  { key: "notifications", label: "Notifications", icon: "notifications" },
-  { key: "support", label: "Support", icon: "support" },
-  { key: "roles", label: "Roles & Permissions", icon: "roles" },
   { key: "doctor-earnings", label: "Doctor Earnings", icon: "wallet" },
+  { key: "reports", label: "Reports", icon: "reports" },
+  { key: "support", label: "Support", icon: "support" },
+  { key: "notifications", label: "Notifications", icon: "notifications" },
+  { key: "content", label: "Content", icon: "content" },
+  { key: "roles", label: "Roles & Permissions", icon: "roles" },
   { key: "audit", label: "Audit Logs", icon: "audit" },
   { key: "settings", label: "All Settings", icon: "settings" },
 ];

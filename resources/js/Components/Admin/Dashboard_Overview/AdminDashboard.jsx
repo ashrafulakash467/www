@@ -63,12 +63,6 @@ const notificationsSeed = [
   { id: "note-3", title: "System health alert", message: "All services are green. No incident is currently open." },
 ];
 
-const supportSeed = [
-  { id: "ticket-1", subject: "Login OTP not received", requester: "A. Rahman", priority: "High", status: "Open" },
-  { id: "ticket-2", subject: "Doctor profile update request", requester: "Dr. Sarah Khan", priority: "Medium", status: "In Progress" },
-  { id: "ticket-3", subject: "Invoice mismatch", requester: "Finance Team", priority: "Low", status: "Waiting on User" },
-];
-
 const auditSeed = [
   { id: "audit-1", action: "Doctor approved", actor: "Admin", time: "2 minutes ago" },
   { id: "audit-3", action: "Role permissions changed", actor: "Super Admin", time: "32 minutes ago" },
@@ -78,7 +72,7 @@ const rolesSeed = [
   { role: "Super Admin", permissions: ["All access", "Manage roles", "View audit logs", "Change settings"] },
   { role: "Operations Admin", permissions: ["Doctors", "Appointments", "Reports"] },
   { role: "Finance Admin", permissions: ["Payments", "Refunds", "Reports"] },
-  { role: "Support Admin", permissions: ["Tickets", "Notifications", "CMS updates"] },
+  { role: "Support Admin", permissions: ["Appointments", "Notifications", "CMS updates"] },
 ];
 
 const systemSettingsSeed = {
@@ -143,7 +137,6 @@ export default function AdminDashboard() {
   const [isReady, setIsReady] = useState(false);
   const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("healthcare.admin.activeTab") ?? "dashboard");
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(appointmentsSeed[0].id);
-  const [selectedTicketId, setSelectedTicketId] = useState(supportSeed[0].id);
   const [systemSettings, setSystemSettings] = useState(systemSettingsSeed);
   const [statusMessage, setStatusMessage] = useState("");
   const [toast, setToast] = useState(null);
@@ -158,9 +151,6 @@ export default function AdminDashboard() {
   const [payments, setPayments] = useState(paymentsSeed);
   const [content, setContent] = useState(contentSeed);
   const [notifications, setNotifications] = useState(notificationsSeed);
-  const [tickets, setTickets] = useState(supportSeed);
-  const [appointmentRequests, setAppointmentRequests] = useState([]);
-  const [appointmentRequestAction, setAppointmentRequestAction] = useState(null);
   const [roles, setRoles] = useState(rolesSeed);
   const [logs, setLogs] = useState(auditSeed);
 
@@ -256,19 +246,6 @@ export default function AdminDashboard() {
 
       if (Array.isArray(result.notifications)) {
         setNotifications(result.notifications);
-      }
-
-      if (Array.isArray(result.tickets) && result.tickets.length > 0) {
-        setTickets(result.tickets);
-        setSelectedTicketId((current) =>
-          result.tickets.some((ticket) => ticket.id === current)
-            ? current
-            : result.tickets[0].id,
-        );
-      }
-
-      if (Array.isArray(result.appointmentRequests)) {
-        setAppointmentRequests(result.appointmentRequests);
       }
 
       if (Array.isArray(result.roles)) {
@@ -623,7 +600,6 @@ export default function AdminDashboard() {
       currency: summary.currency,
       pendingDoctors: summary.pendingDoctors,
       pendingRefunds: summary.pendingRefunds,
-      openTickets: summary.openTickets,
       systemHealth: summary.systemHealth,
       profileCompletion: summary.profileCompletion,
       rbacEnabled: summary.rbacEnabled,
@@ -667,37 +643,6 @@ export default function AdminDashboard() {
       return;
     }
     setActiveTab(item.key);
-  }
-
-  async function handleAppointmentRequestDecision(appointmentId, decision) {
-    const token = getStoredToken("admin");
-    if (!token) return;
-
-    setAppointmentRequestAction({ appointmentId, decision });
-
-    try {
-      const response = await apiFetch(
-        "/appointment/decision",
-        {
-          method: "POST",
-          body: JSON.stringify({ appointmentId, decision }),
-        },
-        token,
-      );
-      const result = await response.json();
-
-      if (!response.ok) {
-        setStatusMessage(result.message ?? "Could not process the appointment request.");
-        return;
-      }
-
-      setStatusMessage(result.message ?? "Appointment request processed successfully.");
-      await Promise.all([loadAdminData(), loadSummary()]);
-    } catch {
-      setStatusMessage("Could not process the appointment request from the server.");
-    } finally {
-      setAppointmentRequestAction(null);
-    }
   }
 
   function toggleSetting(settingKey) {
@@ -796,13 +741,7 @@ export default function AdminDashboard() {
           {activeTab === "notifications" && <NotificationsPage notifications={notifications} />}
           {activeTab === "support" && (
             <SupportPage
-              tickets={tickets}
-              selectedTicketId={selectedTicketId}
-              onSelectTicket={setSelectedTicketId}
               onMessage={setStatusMessage}
-              appointmentRequests={appointmentRequests}
-              appointmentRequestAction={appointmentRequestAction}
-              onAppointmentRequestDecision={handleAppointmentRequestDecision}
             />
           )}
           {activeTab === "roles" && <RolesPage roles={roles} />}

@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SslCommerzPaymentController;
+use App\Http\Controllers\Api\V1\SupportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('health', function () {
@@ -38,6 +39,7 @@ Route::get('doctor-images/{filename}', [DoctorController::class, 'image']);
 Route::get('doctors', [DoctorController::class, 'search']);
 Route::get('doctors/{doctorId}', [DoctorController::class, 'show']);
 Route::get('departments', [DepartmentController::class, 'index']);
+Route::post('contact/messages', [SupportController::class, 'storeContactMessage'])->middleware('throttle:10,1');
 
 // Settings (public)
 Route::get('settings', [SettingsController::class, 'publicIndex']);
@@ -85,6 +87,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('admin/payments/{payment}', [AdminPaymentController::class, 'show'])->whereNumber('payment');
         Route::get('admin/refunds', [AdminPaymentController::class, 'refunds']);
         Route::get('admin/reports/{report}', [AdminReportController::class, 'show']);
+        Route::get('admin/support/appointment-requests', [SupportController::class, 'appointmentRequests']);
+        Route::get('admin/support/contact-messages', [SupportController::class, 'contactMessages']);
         Route::patch('admin/refunds/{payment}/approve', [AdminPaymentController::class, 'approveRefund'])->whereNumber('payment');
         Route::patch('admin/refunds/{payment}/reject', [AdminPaymentController::class, 'rejectRefund'])->whereNumber('payment');
         Route::post('admin/refunds/{payment}/process', [AdminPaymentController::class, 'processRefund'])->whereNumber('payment');

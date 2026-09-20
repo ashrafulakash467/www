@@ -466,6 +466,7 @@ class AppointmentController extends Controller
             unset($meta['patient_change_request']);
 
             if ($changeRequest['type'] === 'cancellation') {
+                $payment = null;
                 if ($data['decision'] === 'accepted') {
                     $this->releaseSlotIfNeeded($appointment);
                     $payment = $this->refundService->cancelAndRefund($appointment, $changeRequest['reason'] ?? $appointment->cancel_reason ?? 'Patient cancellation', 'patient');

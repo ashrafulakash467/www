@@ -14,7 +14,7 @@ class AdminReportTest extends TestCase
     public function test_every_admin_report_can_be_built_from_the_database(): void
     {
         $controller = app(AdminReportController::class);
-        $reports = ['appointments', 'doctors', 'patients', 'payments', 'refunds', 'earnings', 'medical-records', 'audit', 'support', 'date-summary'];
+        $reports = ['appointments', 'doctors', 'patients', 'payments', 'refunds', 'earnings', 'medical-records', 'audit', 'date-summary'];
 
         foreach ($reports as $report) {
             $response = $controller->show(Request::create('/', 'GET', ['period' => 'monthly']), $report);

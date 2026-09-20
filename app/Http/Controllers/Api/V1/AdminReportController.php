@@ -11,7 +11,6 @@ use App\Models\MedicalRecord;
 use App\Models\Patient;
 use App\Models\Payment;
 use App\Models\Prescription;
-use App\Models\SupportTicket;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +35,6 @@ class AdminReportController extends Controller
             'earnings' => $this->earnings($request),
             'medical-records' => $this->medicalRecords($request),
             'audit' => $this->audit($request),
-            'support' => $this->support($request),
             'date-summary' => $this->dateSummary($request),
             default => abort(404),
         };
@@ -247,25 +245,6 @@ class AdminReportController extends Controller
         ], $page, fn (AuditLog $item) => [
             'id' => $item->id, 'date' => $item->created_at?->toDateTimeString(), 'actor' => $item->user?->name ?? 'System',
             'type' => $this->auditType($item), 'action' => $this->label($item->action), 'ip' => $item->ip_address ?? '—',
-        ]);
-    }
-
-    private function support(Request $request): array
-    {
-        $query = SupportTicket::query()->with(['user', 'patient.user', 'doctor.user']);
-        $this->range($query, $request, 'created_at');
-        $this->search($query, $request, fn (Builder $q, string $term) => $q->where('ticket_no', 'like', "%{$term}%")->orWhere('subject', 'like', "%{$term}%")->orWhereHas('user', fn (Builder $u) => $u->where('name', 'like', "%{$term}%"))->orWhereHas('patient.user', fn (Builder $u) => $u->where('name', 'like', "%{$term}%"))->orWhereHas('doctor.user', fn (Builder $u) => $u->where('name', 'like', "%{$term}%")));
-        $status = $request->string('status')->lower()->toString();
-        if ($status !== '') $query->whereIn('status', $status === 'pending' ? ['pending', 'in_progress', 'waiting_on_user'] : ($status === 'resolved' ? ['resolved', 'closed'] : [$status]));
-        $statsQuery = clone $query;
-        $page = $query->latest()->paginate($this->perPage($request));
-        return $this->result([
-            'Open' => (clone $statsQuery)->where('status', 'open')->count(),
-            'Pending' => (clone $statsQuery)->whereIn('status', ['pending', 'in_progress', 'waiting_on_user'])->count(),
-            'Resolved' => (clone $statsQuery)->whereIn('status', ['resolved', 'closed'])->count(), 'Total Tickets' => (clone $statsQuery)->count(),
-        ], $page, fn (SupportTicket $item) => [
-            'id' => $item->id, 'date' => $item->created_at?->toDateString(), 'ticket' => $item->ticket_no,
-            'requester' => $item->user?->name ?? $item->patient?->user?->name ?? $item->doctor?->user?->name ?? '—', 'priority' => $this->label($item->priority), 'status' => $this->label($item->status),
         ]);
     }
 

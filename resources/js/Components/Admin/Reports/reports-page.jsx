@@ -9,7 +9,6 @@ import RefundReport from "./refund-report";
 import EarningsCommissionReport from "./earnings-commission-report";
 import MedicalRecordReport from "./medical-record-report";
 import AuditReport from "./audit-report";
-import SupportReport from "./support-report";
 import DateSummaryReport from "./date-summary-report";
 
 const REPORTS = [
@@ -21,7 +20,6 @@ const REPORTS = [
   { key: "earnings", title: "Earnings & Commission Report", description: "Doctor earnings, admin commission, and revenue split.", accent: "bg-amber-50 text-amber-700", component: EarningsCommissionReport },
   { key: "records", title: "Medical Record Report", description: "Consultations, prescriptions, and medical record totals.", accent: "bg-teal-50 text-teal-700", component: MedicalRecordReport },
   { key: "audit", title: "System Activity / Audit Report", description: "Admin and user activity with system audit logs.", accent: "bg-slate-100 text-slate-700", component: AuditReport },
-  { key: "support", title: "Support Report", description: "Open, pending, and resolved support tickets.", accent: "bg-orange-50 text-orange-700", component: SupportReport },
   { key: "summary", title: "Date-wise Summary Report", description: "Daily, weekly, monthly, and custom date summaries.", accent: "bg-indigo-50 text-indigo-700", component: DateSummaryReport },
 ];
 

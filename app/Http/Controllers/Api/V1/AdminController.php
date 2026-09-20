@@ -9,7 +9,6 @@ use App\Models\CmsPage;
 use App\Models\Doctor;
 use App\Models\Payment;
 use App\Models\Report;
-use App\Models\SupportTicket;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -132,22 +131,6 @@ class AdminController extends Controller
             ])
             ->values();
 
-        $tickets = SupportTicket::query()
-            ->with(['user', 'patient', 'doctor.user'])
-            ->latest()
-            ->get()
-            ->map(fn (SupportTicket $ticket): array => [
-                'id' => (string) $ticket->id,
-                'subject' => $ticket->subject,
-                'requester' => $ticket->user?->name
-                    ?? $ticket->patient?->name
-                    ?? $ticket->doctor?->user?->name
-                    ?? ('User #'.$ticket->user_id),
-                'priority' => $this->adminDisplayLabel($ticket->priority, 'Medium'),
-                'status' => $this->adminDisplayLabel($ticket->status, 'Open'),
-            ])
-            ->values();
-
         $appointmentRequests = Appointment::query()
             ->with(['patient.user', 'doctor.user', 'payment'])
             ->whereIn('status', ['cancellation_requested', 'reschedule_requested'])
@@ -208,7 +191,6 @@ class AdminController extends Controller
             'payments' => $payments,
             'content' => $content,
             'reports' => $reports,
-            'tickets' => $tickets,
             'appointmentRequests' => $appointmentRequests,
             'logs' => $logs,
             'roles' => $roles,
@@ -220,8 +202,7 @@ class AdminController extends Controller
     {
         $pendingDoctors = Doctor::query()->where('verification_status', 'pending')->count();
         $pendingRefunds = Payment::query()->where('status', 'refund_requested')->count();
-        $openTickets = SupportTicket::query()->where('status', 'open')->count();
-        $systemHealth = max(80, 100 - ($pendingDoctors * 2) - $openTickets);
+        $systemHealth = max(80, 100 - ($pendingDoctors * 2));
 
         $notifications = [];
 
@@ -238,14 +219,6 @@ class AdminController extends Controller
                 'id' => 'notify-refund-queue',
                 'title' => 'Refund queue update',
                 'message' => "{$pendingRefunds} refund request(s) are waiting for finance approval.",
-            ];
-        }
-
-        if ($openTickets > 0) {
-            $notifications[] = [
-                'id' => 'notify-open-tickets',
-                'title' => 'Open support tickets',
-                'message' => "{$openTickets} open ticket(s) require attention.",
             ];
         }
 

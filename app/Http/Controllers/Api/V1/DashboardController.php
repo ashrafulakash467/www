@@ -8,7 +8,6 @@ use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\Patient;
 use App\Models\Payment;
-use App\Models\SupportTicket;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -78,8 +77,7 @@ class DashboardController extends Controller
 
         $pendingDoctors = Doctor::query()->where('verification_status', 'pending')->count();
         $pendingRefunds = Payment::query()->where('status', 'refund_requested')->count();
-        $openTickets = SupportTicket::query()->where('status', 'open')->count();
-        $systemHealth = max(80, 100 - ($pendingDoctors * 2) - $openTickets);
+        $systemHealth = max(80, 100 - ($pendingDoctors * 2));
 
         $revenue = Payment::query()
             ->where('status', 'paid')
@@ -105,7 +103,6 @@ class DashboardController extends Controller
             'currency' => $currency,
             'pendingDoctors' => $pendingDoctors,
             'pendingRefunds' => $pendingRefunds,
-            'openTickets' => $openTickets,
             'systemHealth' => $systemHealth,
             'profileCompletion' => $profileCompletion,
             'rbacEnabled' => (bool) $user?->getRoleNames()->isNotEmpty(),

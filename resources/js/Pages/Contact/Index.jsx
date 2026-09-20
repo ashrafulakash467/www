@@ -1,5 +1,42 @@
 
+import { useState } from "react";
+import { apiFetch } from "@/utils/api";
+
 const Contact = () => {
+    const [form, setForm] = useState({ first_name: "", last_name: "", email: "", subject: "", message: "" });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [feedback, setFeedback] = useState(null);
+
+    const updateField = (event) => {
+      setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+    };
+
+    const submitMessage = async (event) => {
+      event.preventDefault();
+      setIsSubmitting(true);
+      setFeedback(null);
+
+      try {
+        const response = await apiFetch("/contact/messages", {
+          method: "POST",
+          body: JSON.stringify(form),
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          const validationMessage = Object.values(result.errors ?? {}).flat()[0];
+          throw new Error(validationMessage || result.message || "Could not send your message.");
+        }
+
+        setForm({ first_name: "", last_name: "", email: "", subject: "", message: "" });
+        setFeedback({ type: "success", text: result.message || "Your message has been sent successfully." });
+      } catch (error) {
+        setFeedback({ type: "error", text: error.message || "Could not send your message." });
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
     return (
         <div className="text-center py-1.5 px-1.5 mt-6 mb-6">
             <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 text-left">
@@ -54,7 +91,7 @@ const Contact = () => {
       </div>
 
       {/* Form Section */}
-      <form className="md:col-span-2 space-y-4">
+      <form className="md:col-span-2 space-y-4" onSubmit={submitMessage}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* First Name */}
           <div>
@@ -64,6 +101,9 @@ const Contact = () => {
             <input
               type="text"
               id="first-name"
+              name="first_name"
+              value={form.first_name}
+              onChange={updateField}
               required
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
               placeholder="Jane"
@@ -78,6 +118,9 @@ const Contact = () => {
             <input
               type="text"
               id="last-name"
+              name="last_name"
+              value={form.last_name}
+              onChange={updateField}
               required
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
               placeholder="Doe"
@@ -93,6 +136,9 @@ const Contact = () => {
           <input
             type="email"
             id="email"
+            name="email"
+            value={form.email}
+            onChange={updateField}
             required
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
             placeholder="jane@example.com"
@@ -107,6 +153,9 @@ const Contact = () => {
           <input
             type="text"
             id="subject"
+            name="subject"
+            value={form.subject}
+            onChange={updateField}
             required
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
             placeholder="How can we help?"
@@ -120,6 +169,9 @@ const Contact = () => {
           </label>
           <textarea
             id="message"
+            name="message"
+            value={form.message}
+            onChange={updateField}
             rows={4}
             required
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white text-sm resize-none"
@@ -128,11 +180,17 @@ const Contact = () => {
         </div>
 
         {/* Submit Button */}
+        {feedback ? (
+          <p className={`rounded-lg border px-4 py-3 text-sm ${feedback.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+            {feedback.text}
+          </p>
+        ) : null}
         <button
           type="submit"
+          disabled={isSubmitting}
           className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 text-sm"
         >
-          Send Message
+          {isSubmitting ? "Sending..." : "Send Message"}
         </button>
       </form>
 
