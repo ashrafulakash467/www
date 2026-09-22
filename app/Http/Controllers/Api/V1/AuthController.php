@@ -223,6 +223,8 @@ class AuthController extends Controller
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'currentPassword' => ['nullable', 'string', 'required_with:newPassword,confirmPassword', 'max:255'],
             'newPassword' => ['nullable', 'string', 'required_with:currentPassword,confirmPassword', 'min:8', 'max:255'],
             'confirmPassword' => ['nullable', 'string', 'required_with:newPassword', 'same:newPassword', 'max:255'],
@@ -265,6 +267,8 @@ class AuthController extends Controller
                 'city' => filled($validated['city'] ?? null) ? trim((string) $validated['city']) : null,
                 'state' => filled($validated['state'] ?? null) ? trim((string) $validated['state']) : null,
                 'country' => filled($validated['country'] ?? null) ? trim((string) $validated['country']) : null,
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
             ])->save();
         });
 

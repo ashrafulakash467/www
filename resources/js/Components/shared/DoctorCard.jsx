@@ -95,7 +95,7 @@ export function formatConsultationFee(value) {
   }).format(Math.round(numericValue))}`;
 }
 
-export default function DoctorCard({ doctor, showAction = true }) {
+export default function DoctorCard({ doctor, showAction = true, onBook }) {
   const imageSrc = resolveDoctorImageSrc(doctor);
 
   return (
@@ -162,6 +162,7 @@ export default function DoctorCard({ doctor, showAction = true }) {
           <div className="mt-auto pt-4">
             <Link
               href={`/appointment/book?doctorId=${doctor?.id}`}
+              onClick={onBook}
               className="inline-flex h-9 w-full items-center justify-center rounded-full bg-brand px-4 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover"
             >
               Book Appointment

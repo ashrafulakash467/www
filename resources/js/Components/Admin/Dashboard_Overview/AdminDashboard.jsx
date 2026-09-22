@@ -360,6 +360,11 @@ export default function AdminDashboard() {
       appendValue("available_dates", formData.availableDates ?? "");
       appendValue("available_time_slots", formData.availableTimeSlots ?? "");
       appendValue("city", formData.city ?? "");
+      appendValue("state", formData.state ?? "");
+      appendValue("country", formData.country ?? "");
+      appendValue("chamber_address", formData.chamberAddress ?? "");
+      payload.append("latitude", formData.latitude ?? "");
+      payload.append("longitude", formData.longitude ?? "");
       appendValue("license_no", formData.licenseNo ?? "");
       appendValue("verification_status", formData.verificationStatus ?? "");
       appendValue("status", formData.status ?? "");
@@ -425,6 +430,11 @@ export default function AdminDashboard() {
       available_dates: formData.availableDates ?? null,
       available_time_slots: formData.availableTimeSlots ?? null,
       city: formData.city ?? null,
+      state: formData.state ?? null,
+      country: formData.country ?? null,
+      chamber_address: formData.chamberAddress ?? null,
+      latitude: formData.latitude === "" ? null : formData.latitude,
+      longitude: formData.longitude === "" ? null : formData.longitude,
       license_no: formData.licenseNo ?? null,
       verification_status: formData.verificationStatus ?? undefined,
       status: formData.status ?? undefined,
@@ -505,6 +515,11 @@ export default function AdminDashboard() {
       availableDates: normalizeDoctorDateList(doctor.availableDates ?? doctor.available_dates),
       availableTimeSlots: formatDoctorListValue(doctor.availableTimeSlots ?? doctor.available_time_slots),
       city: doctor.city ?? "",
+      state: doctor.state ?? "",
+      country: doctor.country ?? "",
+      chamberAddress: doctor.chamberAddress ?? "",
+      latitude: doctor.latitude ?? "",
+      longitude: doctor.longitude ?? "",
       licenseNo: doctor.licenseNo ?? "",
       verificationStatus: doctor.verificationStatus ?? "pending",
       status: doctor.status ?? "active",
@@ -531,6 +546,11 @@ export default function AdminDashboard() {
       availableDates: [],
       availableTimeSlots: "",
       city: "",
+      state: "",
+      country: "Bangladesh",
+      chamberAddress: "",
+      latitude: "",
+      longitude: "",
       licenseNo: "",
       verificationStatus: "pending",
       status: "active",
@@ -552,6 +572,11 @@ export default function AdminDashboard() {
       availableDates: [],
       availableTimeSlots: "",
       city: "",
+      state: "",
+      country: "Bangladesh",
+      chamberAddress: "",
+      latitude: "",
+      longitude: "",
       licenseNo: "",
       verificationStatus: "pending",
       status: "active",

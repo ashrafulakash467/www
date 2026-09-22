@@ -42,6 +42,8 @@ class DoctorController extends Controller
                     ->orWhere('sub_specialty', 'like', "%{$search}%")
                     ->orWhere('license_no', 'like', "%{$search}%")
                     ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('state', 'like', "%{$search}%")
+                    ->orWhere('country', 'like', "%{$search}%")
                     ->orWhere('chamber_address', 'like', "%{$search}%");
             });
         });
@@ -164,6 +166,10 @@ class DoctorController extends Controller
             'available_dates' => ['nullable'],
             'available_time_slots' => ['nullable'],
             'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'license_no' => ['nullable', 'string', 'max:255', 'unique:doctors,license_no'],
             'image' => ['nullable', 'image', 'max:4096'],
             'verification_status' => ['nullable', Rule::in(['pending', 'approved', 'suspended', 'unavailable'])],
@@ -199,8 +205,10 @@ class DoctorController extends Controller
                 'available_dates' => $availableDates,
                 'available_time_slots' => $availableTimeSlots,
                 'city' => $data['city'] ?? null,
-                'state' => null,
-                'country' => null,
+                'state' => $data['state'] ?? null,
+                'country' => $data['country'] ?? null,
+                'latitude' => $data['latitude'] ?? null,
+                'longitude' => $data['longitude'] ?? null,
                 'verification_status' => $data['verification_status'] ?? 'pending',
                 'status' => $data['status'] ?? 'active',
             ]);
@@ -240,6 +248,10 @@ class DoctorController extends Controller
             'available_dates' => ['sometimes', 'nullable'],
             'available_time_slots' => ['sometimes', 'nullable'],
             'city' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'state' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'country' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
             'license_no' => ['sometimes', 'nullable', 'string', 'max:255'],
             'image' => ['sometimes', 'nullable', 'image', 'max:4096'],
             'image_path' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -302,6 +314,10 @@ class DoctorController extends Controller
             'available_dates',
             'available_time_slots',
             'city',
+            'state',
+            'country',
+            'latitude',
+            'longitude',
             'license_no',
             'image_path',
             'verification_status',
@@ -342,6 +358,11 @@ class DoctorController extends Controller
             'specialty' => $doctor->specialty ?? 'General Medicine',
             'consultationFee' => $doctor->consultation_fee,
             'location' => $this->doctorLocation($doctor),
+            'city' => $doctor->city,
+            'state' => $doctor->state,
+            'country' => $doctor->country,
+            'latitude' => $doctor->latitude,
+            'longitude' => $doctor->longitude,
             'gender' => $doctor->gender ?? 'Unspecified',
             'isAvailable' => $this->isDoctorAvailable($doctor),
             'imagePath' => $doctor->image_path,
@@ -376,6 +397,8 @@ class DoctorController extends Controller
             'city' => $doctor->city,
             'state' => $doctor->state,
             'country' => $doctor->country,
+            'latitude' => $doctor->latitude,
+            'longitude' => $doctor->longitude,
             'imagePath' => $doctor->image_path,
             'imageUrl' => $this->doctorImageUrl($doctor),
             'verificationStatus' => $doctor->verification_status,

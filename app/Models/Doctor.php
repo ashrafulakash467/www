@@ -32,6 +32,8 @@ class Doctor extends Model
         'city',
         'state',
         'country',
+        'latitude',
+        'longitude',
         'verification_status',
         'verified_at',
         'status',
@@ -40,6 +42,8 @@ class Doctor extends Model
     protected $casts = [
         'consultation_fee' => 'decimal:2',
         'follow_up_fee' => 'decimal:2',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
         'doctor_percentage' => 'decimal:2',
         'available_dates' => 'array',
         'available_time_slots' => 'array',

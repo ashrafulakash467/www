@@ -391,6 +391,28 @@ export default function SettingsPage() {
                   <Field label="Qualification" name="qualification" value={form.qualification} onChange={updateField} placeholder="MBBS, FCPS" />
                   <Field label="License No" name="licenseNo" value={form.licenseNo} onChange={updateField} placeholder="BMDC-123456" />
                   <Field label="Chamber Address" name="chamberAddress" value={form.chamberAddress} onChange={updateField} placeholder="House 12, Road 3" />
+                  <Field
+                    label="Chamber Latitude(Add 1st point from map)"
+                    name="latitude"
+                    type="number"
+                    value={form.latitude}
+                    onChange={updateField}
+                    placeholder="23.8103310"
+                    min="-90"
+                    max="90"
+                    step="0.0000001"
+                  />
+                  <Field
+                    label="Chamber Longitude(Add 2nd point from map)"
+                    name="longitude"
+                    type="number"
+                    value={form.longitude}
+                    onChange={updateField}
+                    placeholder="90.4125210"
+                    min="-180"
+                    max="180"
+                    step="0.0000001"
+                  />
                   <Field label="Gender" name="gender" value={form.gender} onChange={updateField} placeholder="Select gender" options={["Male", "Female", "Other"]} />
                   <TextareaField
                     label="Bio"
@@ -655,7 +677,18 @@ function SettingsSection({ title, description, children }) {
   );
 }
 
-function Field({ label, name, value, onChange, type = "text", placeholder, options }) {
+function Field({
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  options,
+  min,
+  max,
+  step,
+}) {
   return (
     <label className="block">
       <span className="text-sm font-semibold text-slate-700">{label}</span>
@@ -682,6 +715,9 @@ function Field({ label, name, value, onChange, type = "text", placeholder, optio
           value={value}
           onChange={onChange}
           placeholder={placeholder}
+          min={min}
+          max={max}
+          step={step}
           className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
         />
       )}
@@ -773,6 +809,8 @@ function buildProfileForm(user) {
     city: doctor.city ?? "",
     state: doctor.state ?? "",
     country: doctor.country ?? "Bangladesh",
+    latitude: doctor.latitude ?? "",
+    longitude: doctor.longitude ?? "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
@@ -798,6 +836,8 @@ function buildProfilePayload(form) {
     city: optionalValue(form.city),
     state: optionalValue(form.state),
     country: optionalValue(form.country) ?? "Bangladesh",
+    latitude: numberOrNull(form.latitude),
+    longitude: numberOrNull(form.longitude),
     currentPassword: optionalValue(form.currentPassword),
     newPassword: optionalValue(form.newPassword),
     confirmPassword: optionalValue(form.confirmPassword),
@@ -811,6 +851,14 @@ function validateProfilePayload(payload) {
 
   if (!payload.email) {
     return "Email is required.";
+  }
+
+  if (payload.latitude !== null && (payload.latitude < -90 || payload.latitude > 90)) {
+    return "Chamber latitude must be between -90 and 90.";
+  }
+
+  if (payload.longitude !== null && (payload.longitude < -180 || payload.longitude > 180)) {
+    return "Chamber longitude must be between -180 and 180.";
   }
 
   const passwordFieldsFilled = [payload.currentPassword, payload.newPassword, payload.confirmPassword].some(Boolean);

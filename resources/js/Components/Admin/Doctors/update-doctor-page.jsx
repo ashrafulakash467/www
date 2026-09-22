@@ -409,6 +409,44 @@ export default function UpdateDoctorPage({ doctor, form, setForm, onSave, onCanc
           placeholder="Dhaka"
         />
         <Field
+          label="State"
+          value={currentValue("state", doctor.state)}
+          onChange={(value) => updateField("state", value)}
+          placeholder="Dhaka Division"
+        />
+        <Field
+          label="Country"
+          value={currentValue("country", doctor.country)}
+          onChange={(value) => updateField("country", value)}
+          placeholder="Bangladesh"
+        />
+        <Field
+          label="Chamber Address"
+          value={currentValue("chamberAddress", doctor.chamberAddress)}
+          onChange={(value) => updateField("chamberAddress", value)}
+          placeholder="House 12, Road 3"
+        />
+        <Field
+          label="Chamber Latitude(Add 1st point from map)"
+          value={currentValue("latitude", doctor.latitude ?? "")}
+          onChange={(value) => updateField("latitude", value)}
+          placeholder="23.8103310"
+          type="number"
+          min="-90"
+          max="90"
+          step="0.0000001"
+        />
+        <Field
+          label="Chamber Longitude(Add 2nd point from map)"
+          value={currentValue("longitude", doctor.longitude ?? "")}
+          onChange={(value) => updateField("longitude", value)}
+          placeholder="90.4125210"
+          type="number"
+          min="-180"
+          max="180"
+          step="0.0000001"
+        />
+        <Field
           label="License No"
           value={currentValue("licenseNo", doctor.licenseNo)}
           onChange={(value) => updateField("licenseNo", value)}
@@ -517,7 +555,7 @@ export default function UpdateDoctorPage({ doctor, form, setForm, onSave, onCanc
   );
 }
 
-function Field({ label, value, onChange, placeholder, type = "text" }) {
+function Field({ label, value, onChange, placeholder, type = "text", min, max, step }) {
   return (
     <label className="block">
       <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -528,6 +566,9 @@ function Field({ label, value, onChange, placeholder, type = "text" }) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        min={min}
+        max={max}
+        step={step}
         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400"
       />
     </label>
