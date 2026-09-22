@@ -1,41 +1,37 @@
 import { Link } from "@inertiajs/react";
 
 const companyLinks = [
-  "About Us",
-  "Contact",
-  "Services",
-  "Blog",
-  "Diseases and Conditions",
-  "Privacy Policy",
-  "Terms & Conditions",
+  { label: "About Us", href: "/about" },
+  { label: "Contact", href: "/contact" },
+  { label: "Services", href: "/services" },
+  { label: "Privacy Policy", href: "/policies/privacy-policy" },
+  { label: "Terms & Conditions", href: "/policies/terms-and-conditions" },
 ];
 
 const patientLinks = [
-  "FAQ's",
-  "Find Doctors",
-  "Find Ambulances",
-  "Privacy Policy",
-  "Terms & Conditions",
-  "Patient No-Show Policy",
-  "Cancellation & Refund Policy",
+  { label: "FAQ's", href: "/contact?topic=faq" },
+  { label: "Find Doctors", href: "/doctors" },
+  { label: "Privacy Policy", href: "/policies/privacy-policy" },
+  { label: "Terms & Conditions", href: "/policies/terms-and-conditions" },
+  { label: "Patient No-Show Policy", href: "/policies/patient-no-show" },
+  { label: "Cancellation & Refund Policy", href: "/policies/cancellation-refund" },
 ];
 
 const doctorLinks = [
-  "Login as Doctor",
-  "Work with Us",
-  "Privacy Policy",
-  "Terms & Conditions",
-  "Patient No-Show Policy",
-  "Account Deletion",
+  { label: "Work with Us", href: "/contact?topic=work-with-us" },
+  { label: "Privacy Policy", href: "/policies/privacy-policy" },
+  { label: "Terms & Conditions", href: "/policies/terms-and-conditions" },
+  { label: "Patient No-Show Policy", href: "/policies/patient-no-show" },
+  { label: "Account Deletion", href: "/policies/account-deletion" },
 ];
 
 const socialLinks = [
-  { label: "Facebook", icon: <FacebookIcon /> },
-  { label: "LinkedIn", icon: <LinkedInIcon /> },
-  { label: "YouTube", icon: <YoutubeIcon /> },
-  { label: "Twitter", icon: <TwitterIcon /> },
-  { label: "Instagram", icon: <InstagramIcon /> },
-  { label: "Messenger", icon: <MessengerIcon /> },
+  { label: "Facebook", href: "https://www.facebook.com/", icon: <FacebookIcon /> },
+  { label: "LinkedIn", href: "https://www.linkedin.com/", icon: <LinkedInIcon /> },
+  { label: "YouTube", href: "https://www.youtube.com/", icon: <YoutubeIcon /> },
+  { label: "Twitter", href: "https://x.com/", icon: <TwitterIcon /> },
+  { label: "Instagram", href: "https://www.instagram.com/", icon: <InstagramIcon /> },
+  { label: "Messenger", href: "https://www.messenger.com/", icon: <MessengerIcon /> },
 ];
 
 export default function Footer() {
@@ -67,14 +63,17 @@ export default function Footer() {
 
             <div className="flex flex-wrap gap-3">
               {socialLinks.map((item) => (
-                <Link
+                <a
                   key={item.label}
-                  href="#"
-                  aria-label={item.label}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Visit ${item.label}`}
+                  title={item.label}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-white text-[#345c32] transition hover:-translate-y-0.5 hover:bg-[#a7f0dd]"
                 >
                   {item.icon}
-                </Link>
+                </a>
               ))}
             </div>
 
@@ -98,7 +97,7 @@ export default function Footer() {
 
           <FooterColumn title="Health Care ltd." links={companyLinks} />
           <FooterColumn title="For Patients" links={patientLinks} />
-          <FooterColumn title="For Doctors/Organisations" links={doctorLinks} />
+          <FooterColumn title="For Doctors" links={doctorLinks} />
         </div>
 
         <div className="mt-12 border-t border-white/10 pt-8">
@@ -128,9 +127,9 @@ function FooterColumn({ title, links }) {
       <h2 className="text-xl font-extrabold text-white">{title}</h2>
       <ul className="mt-6 space-y-4 text-base text-white/90">
         {links.map((link) => (
-          <li key={link}>
-            <Link href="#" className="transition hover:text-[#a7f0dd]">
-              {link}
+          <li key={link.label}>
+            <Link href={link.href} className="transition hover:text-[#a7f0dd]">
+              {link.label}
             </Link>
           </li>
         ))}

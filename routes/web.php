@@ -19,6 +19,9 @@ Route::get('/about', [StaticPageController::class, 'about'])->name('about');
 Route::get('/contact', [StaticPageController::class, 'contact'])->name('contact');
 Route::get('/departments', [StaticPageController::class, 'departments'])->name('departments.index');
 Route::get('/services', [StaticPageController::class, 'services'])->name('services.index');
+Route::get('/policies/{slug}', [StaticPageController::class, 'policy'])
+    ->where('slug', '[a-z0-9-]+')
+    ->name('policies.show');
 
 Route::controller(DoctorController::class)->group(function (): void {
     Route::get('/doctors', 'index')->name('doctors.index');
