@@ -8,6 +8,8 @@ import { apiFetch, getStoredToken } from "@/utils/api";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
 
+const DUPLICATE_DATE_MESSAGE = "You already booked an appointment for this date.";
+
 export default function BookAppointmentPage() {
   return (
     <Suspense fallback={null}>
@@ -29,6 +31,7 @@ function BookAppointmentContent() {
   const [slotTime, setSlotTime] = useState("");
   const [error, setError] = useState("");
   const [bookingToast, setBookingToast] = useState(null);
+  const [bookingErrorToast, setBookingErrorToast] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   // NOTE: initialize SSR-safe deterministic values (false / 0) so the server
   // and the first client render produce identical HTML, then sync real values
@@ -223,6 +226,18 @@ function BookAppointmentContent() {
     return () => window.clearTimeout(timeoutId);
   }, [bookingToast]);
 
+  useEffect(() => {
+    if (!bookingErrorToast) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setBookingErrorToast("");
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [bookingErrorToast]);
+
   const selectedDoctor =
     bookingOptions?.doctor ??
     doctors.find((doctor) => String(doctor.id) === String(doctorId)) ??
@@ -281,6 +296,7 @@ const visibleSlots = activeAppointmentDate
     event.preventDefault();
     setError("");
     setBookingToast(null);
+    setBookingErrorToast("");
 
     const token =
       getStoredToken("patient") ||
@@ -316,11 +332,19 @@ const visibleSlots = activeAppointmentDate
       const result = await response.json();
 
       if (!response.ok) {
-        const validationMessage = Object.values(result.errors ?? {})
-          .flat()
-          .find((message) => typeof message === "string");
-        setError(validationMessage ?? result.message ?? "Could not book appointment.");
-        if (String(validationMessage ?? result.message ?? "").toLowerCase().includes("slot")) {
+        const validationMessage = [
+          ...(result.errors?.appointmentDate ?? []),
+          ...Object.values(result.errors ?? {}).flat(),
+        ].find((message) => typeof message === "string");
+        const errorMessage = validationMessage ?? result.message ?? "Could not book appointment.";
+
+        if (errorMessage === DUPLICATE_DATE_MESSAGE) {
+          setBookingErrorToast(errorMessage);
+        } else {
+          setError(errorMessage);
+        }
+
+        if (String(errorMessage).toLowerCase().includes("slot")) {
           setSlotRefreshTick((current) => current + 1);
         }
         return;
@@ -351,6 +375,28 @@ const visibleSlots = activeAppointmentDate
 
   return (
     <main className="bg-white">
+      {bookingErrorToast ? (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed bottom-4 right-4 z-50 w-[min(92vw,420px)] rounded-2xl border border-red-200 bg-white px-4 py-4 shadow-[0_18px_50px_rgba(239,68,68,0.18)]"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-red-700">Booking unavailable</p>
+              <p className="mt-1 text-sm text-slate-700">{bookingErrorToast}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBookingErrorToast("")}
+              className="rounded-full px-2 py-1 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+              aria-label="Dismiss booking error"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ) : null}
       {bookingToast ? (
         <div className="fixed bottom-4 right-4 z-50 w-[min(92vw,420px)] rounded-2xl border border-green-200 bg-white px-4 py-4 shadow-[0_18px_50px_rgba(16,185,129,0.18)]">
           <div className="flex items-start justify-between gap-3">
@@ -401,7 +447,11 @@ const visibleSlots = activeAppointmentDate
           ) : null}
 
           {error ? (
-            <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
               <p>{error}</p>
               {error.includes("log in") ? (
                 <Link href="/login" className="mt-2 inline-flex font-semibold text-brand">

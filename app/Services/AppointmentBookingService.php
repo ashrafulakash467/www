@@ -14,11 +14,18 @@ use Illuminate\Validation\ValidationException;
 
 class AppointmentBookingService
 {
+    public const DUPLICATE_DATE_MESSAGE = 'You already booked an appointment for this date.';
+
     /** @param array{doctorId:int|string, appointmentDate:string, slotTime:string} $data */
     public function book(User $user, array $data): Appointment
     {
         return DB::transaction(function () use ($user, $data): Appointment {
-            $patient = Patient::query()->where('user_id', $user->id)->first();
+            // Serialize bookings for this patient so simultaneous requests cannot both
+            // pass the same-day check before either appointment has been committed.
+            $patient = Patient::query()
+                ->where('user_id', $user->id)
+                ->lockForUpdate()
+                ->first();
             if (! $patient) {
                 // Some legacy/demo users were created without their patient row.
                 // Restore the profile from the authenticated account before booking.
@@ -29,6 +36,18 @@ class AppointmentBookingService
                     'phone' => $user->phone,
                     'country' => 'Bangladesh',
                     'status' => 'active',
+                ]);
+            }
+
+            $alreadyBookedForDate = Appointment::query()
+                ->where('patient_id', $patient->id)
+                ->whereDate('appointment_date', $data['appointmentDate'])
+                ->whereIn('status', Appointment::ACTIVE_BOOKING_STATUSES)
+                ->exists();
+
+            if ($alreadyBookedForDate) {
+                throw ValidationException::withMessages([
+                    'appointmentDate' => [self::DUPLICATE_DATE_MESSAGE],
                 ]);
             }
 

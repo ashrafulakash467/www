@@ -12,6 +12,14 @@ class Appointment extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /** Statuses that prevent the patient from booking another appointment on the same date. */
+    public const ACTIVE_BOOKING_STATUSES = [
+        'pending',
+        'confirmed',
+        'reschedule_requested',
+        'cancellation_requested',
+    ];
+
     protected $fillable = [
         'appointment_no',
         'patient_id',

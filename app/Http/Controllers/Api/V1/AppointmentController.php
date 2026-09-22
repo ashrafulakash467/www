@@ -183,7 +183,21 @@ class AppointmentController extends Controller
         $data = $request->validated();
 
         // The service owns transaction/slot-capacity rules; the controller returns its result.
-        $appointment = $this->bookingService->book($request->user(), $data);
+        try {
+            $appointment = $this->bookingService->book($request->user(), $data);
+        } catch (ValidationException $exception) {
+            $dateMessage = $exception->errors()['appointmentDate'][0] ?? null;
+
+            if ($dateMessage === AppointmentBookingService::DUPLICATE_DATE_MESSAGE) {
+                return response()->json([
+                    'success' => false,
+                    'message' => AppointmentBookingService::DUPLICATE_DATE_MESSAGE,
+                    'errors' => $exception->errors(),
+                ], 422);
+            }
+
+            throw $exception;
+        }
 
         return response()->json([
             'success' => true,
