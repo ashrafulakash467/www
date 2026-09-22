@@ -26,6 +26,10 @@ Route::controller(DoctorController::class)->group(function (): void {
     Route::get('/doctors/{doctor}', 'show')->name('doctors.show');
 });
 
+// Guests may review a doctor's details and availability. Creating the
+// appointment remains protected by the authenticated patient API route.
+Route::get('/appointment/book', [AppointmentController::class, 'create'])->name('appointments.create');
+
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', fn () => Inertia::render('Auth/Login'))->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
@@ -57,7 +61,6 @@ Route::middleware('auth')->group(function (): void {
     });
 
     Route::middleware('role:patient')->group(function (): void {
-        Route::get('/appointment/book', [AppointmentController::class, 'create'])->name('appointments.create');
         Route::get('/appointment/reschedule', [AppointmentController::class, 'edit'])->name('appointments.reschedule');
         Route::get('/payment', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('/payment/hosted-checkout', [PaymentController::class, 'hosted'])->name('payments.hosted');

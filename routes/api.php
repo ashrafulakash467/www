@@ -41,6 +41,9 @@ Route::get('doctor-images/{filename}', [DoctorController::class, 'image']);
 Route::get('doctors', [DoctorController::class, 'search']);
 Route::get('doctors/{doctorId}', [DoctorController::class, 'show']);
 Route::get('departments', [DepartmentController::class, 'index']);
+Route::get('appointment/booking-options', [AppointmentController::class, 'bookingOptions']);
+Route::get('appointment/available-dates', [AppointmentController::class, 'availableDates']);
+Route::get('appointment/available-slots', [AppointmentController::class, 'availableSlots']);
 Route::post('contact/messages', [SupportController::class, 'storeContactMessage'])->middleware('throttle:10,1');
 
 // Settings (public)
@@ -143,9 +146,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::middleware('role:patient|admin|super-admin')->group(function (): void {
         Route::get('patient/dashboard', [DashboardController::class, 'patient']);
         Route::match(['put', 'patch'], 'patient/me', [AuthController::class, 'updateMe'])->middleware('role:patient');
-        Route::get('appointment/booking-options', [AppointmentController::class, 'bookingOptions']);
-        Route::get('appointment/available-dates', [AppointmentController::class, 'availableDates']);
-        Route::get('appointment/available-slots', [AppointmentController::class, 'availableSlots']);
         Route::post('appointment/book', [AppointmentController::class, 'book']);
         Route::post('appointments', [AppointmentController::class, 'book']);
         Route::post('appointment/cancel', [AppointmentController::class, 'cancel']);

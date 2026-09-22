@@ -33,6 +33,64 @@ class HealthcareArchitectureTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->component('Doctors/Index'));
     }
 
+    public function test_guests_can_review_booking_details_but_cannot_book(): void
+    {
+        $doctorUser = User::factory()->create(['role' => 'doctor', 'status' => 'active']);
+        $doctorUser->assignRole('doctor');
+        $doctor = Doctor::create([
+            'user_id' => $doctorUser->id,
+            'specialty' => 'Cardiology',
+            'verification_status' => 'approved',
+            'status' => 'active',
+        ]);
+        $schedule = DoctorSchedule::create([
+            'doctor_id' => $doctor->id,
+            'consultation_type' => 'in_person',
+            'timezone' => 'Asia/Dhaka',
+            'working_days' => ['monday'],
+            'start_time' => '09:00:00',
+            'end_time' => '10:00:00',
+            'slot_duration_minutes' => 30,
+            'daily_capacity' => 1,
+            'is_active' => true,
+            'status' => 'active',
+        ]);
+        $date = now()->addDay()->toDateString();
+        AppointmentSlot::create([
+            'doctor_schedule_id' => $schedule->id,
+            'doctor_id' => $doctor->id,
+            'slot_date' => $date,
+            'start_time' => '09:00:00',
+            'end_time' => '09:30:00',
+            'capacity' => 1,
+            'booked_count' => 0,
+            'is_bookable' => true,
+            'status' => 'available',
+        ]);
+
+        $this->get("/appointment/book?doctorId={$doctor->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Appointments/Book'));
+
+        $this->getJson("/api/v1/appointment/booking-options?doctorId={$doctor->id}")
+            ->assertOk()
+            ->assertJsonPath('doctor.id', (string) $doctor->id);
+
+        $this->getJson("/api/v1/appointment/available-dates?doctorId={$doctor->id}")
+            ->assertOk()
+            ->assertJsonPath('dates.0', $date);
+
+        $this->getJson("/api/v1/appointment/available-slots?doctorId={$doctor->id}&date={$date}")
+            ->assertOk()
+            ->assertJsonPath('slots.0.time', '09:00 AM');
+
+        $this->postJson('/api/v1/appointment/book', [
+            'doctorId' => $doctor->id,
+            'appointmentDate' => $date,
+            'slotTime' => '09:00 AM',
+        ])->assertUnauthorized();
+    }
+
     public function test_login_uses_a_server_side_session_and_redirects_by_role(): void
     {
         $patient = User::factory()->create([
