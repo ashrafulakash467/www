@@ -10,12 +10,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
+/** Provide each doctor with scoped earning summaries, history, trends, and balances. */
+/** Frontend mental model: it supplies the numbers, table rows, and chart points for earnings UI. */
 class DoctorEarningController extends Controller
 {
+    // The service owns calculations; this controller handles request and response concerns.
     public function __construct(private readonly EarningService $earnings) {}
 
+    /** Return financial totals for the authenticated doctor. */
     public function summary(Request $request): JsonResponse
     {
+        // Follow the authenticated User -> Doctor relationship to establish ownership.
         $doctor = $request->user()?->doctor;
         abort_unless($doctor, 403);
 
@@ -24,11 +29,13 @@ class DoctorEarningController extends Controller
         return response()->json(['success' => true, 'data' => $summary]);
     }
 
+    /** Filter and paginate the doctor's earning transactions. */
     public function history(Request $request): JsonResponse
     {
         $doctor = $request->user()?->doctor;
         abort_unless($doctor, 403);
 
+        // Build a lazy query first; SQL runs when paginate() is called later.
         $query = EarningTransaction::query()
             ->where('doctor_id', $doctor->id)
             ->with(['appointment', 'payment']);
@@ -50,6 +57,7 @@ class DoctorEarningController extends Controller
         ]);
     }
 
+    /** Return one earning transaction owned by the current doctor. */
     public function show(Request $request, int $earningId): JsonResponse
     {
         $doctor = $request->user()?->doctor;
@@ -63,11 +71,13 @@ class DoctorEarningController extends Controller
         return response()->json(['success' => true, 'data' => $this->formatEarningDetail($earning)]);
     }
 
+    /** Aggregate recent doctor earnings into a chart-ready trend. */
     public function trend(Request $request): JsonResponse
     {
         $doctor = $request->user()?->doctor;
         abort_unless($doctor, 403);
 
+        // The frontend period filter chooses how transactions become chart points.
         $period = $request->string('period', 'daily')->toString();
         $allowed = ['daily', 'weekly', 'monthly', 'yearly'];
         if (!in_array($period, $allowed, true)) {
@@ -79,6 +89,7 @@ class DoctorEarningController extends Controller
         return response()->json(['success' => true, 'data' => $trend, 'period' => $period]);
     }
 
+    /** Return the doctor's currently available earning balance. */
     public function balance(Request $request): JsonResponse
     {
         $doctor = $request->user()?->doctor;
@@ -89,6 +100,7 @@ class DoctorEarningController extends Controller
         return response()->json(['success' => true, 'data' => ['available_balance' => $balance]]);
     }
 
+    /** Apply status, type, date, and search filters to an earning query. */
     private function applyFilters(Builder $query, Request $request): Builder
     {
         $status = $request->string('status')->toString();
@@ -123,6 +135,7 @@ class DoctorEarningController extends Controller
         return $query;
     }
 
+    /** Format a transaction for earning-history lists. */
     private function formatEarning(EarningTransaction $earning): array
     {
         $appointment = $earning->appointment;
@@ -151,6 +164,7 @@ class DoctorEarningController extends Controller
         ];
     }
 
+    /** Extend the list representation with appointment and payment details. */
     private function formatEarningDetail(EarningTransaction $earning): array
     {
         $payment = $earning->payment;
@@ -189,4 +203,3 @@ class DoctorEarningController extends Controller
         ];
     }
 }
-

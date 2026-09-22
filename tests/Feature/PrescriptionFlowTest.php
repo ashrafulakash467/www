@@ -11,12 +11,16 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
+/** Test prescription creation, replacement, database persistence, and patient visibility end to end. */
 class PrescriptionFlowTest extends TestCase
 {
+    // Reset all database tables so IDs and record counts are deterministic.
     use RefreshDatabase;
 
+    /** Ensure a doctor can write/update a prescription and its patient can read the result. */
     public function test_doctor_can_save_update_and_patient_can_read_prescription(): void
     {
+        // Arrange access-control records before assigning roles to test users.
         Role::findOrCreate('doctor');
         Role::findOrCreate('patient');
         $doctorUser = User::factory()->create(['role' => 'doctor']);
@@ -35,6 +39,7 @@ class PrescriptionFlowTest extends TestCase
             'status' => 'active',
         ]);
 
+        // The appointment connects the doctor and patient and authorizes the consultation record.
         $appointment = Appointment::create([
             'appointment_no' => 'APT-TEST-001',
             'patient_id' => $patient->id,
@@ -44,6 +49,7 @@ class PrescriptionFlowTest extends TestCase
             'payment_status' => 'paid',
         ]);
 
+        // Act as the doctor and send the same nested JSON shape used by the prescription form.
         $createResponse = $this->actingAs($doctorUser)->postJson(
             "/api/v1/consultations/{$appointment->appointment_no}/prescriptions",
             [
@@ -74,11 +80,13 @@ class PrescriptionFlowTest extends TestCase
             ],
         );
 
+        // HTTP assertions verify both status and the serialized response contract.
         $createResponse
             ->assertCreated()
             ->assertJsonPath('record.appointmentNo', $appointment->appointment_no)
             ->assertJsonCount(2, 'record.items');
 
+        // Query the database record so later assertions can reference generated IDs.
         $prescription = Prescription::where('appointment_id', $appointment->id)->firstOrFail();
         $firstItemId = $prescription->items()->where('medicine_name', 'Medicine A')->value('id');
         $this->assertDatabaseHas('prescriptions', [
@@ -87,8 +95,10 @@ class PrescriptionFlowTest extends TestCase
             'doctor_id' => $doctor->id,
             'status' => 'issued',
         ]);
+        // Database assertions prove the nested medicine items were truly persisted.
         $this->assertDatabaseCount('prescription_items', 2);
 
+        // PUT exercises replacement behavior: keep one item ID and remove the omitted item.
         $updateResponse = $this->actingAs($doctorUser)->putJson(
             "/api/v1/consultations/{$appointment->appointment_no}/prescriptions",
             [
@@ -125,6 +135,7 @@ class PrescriptionFlowTest extends TestCase
             'medicine_name' => 'Medicine C',
         ]);
 
+        // Finally switch identity and verify the patient receives only their readable record data.
         $this->actingAs($patientUser)
             ->getJson('/api/v1/medical-records')
             ->assertOk()

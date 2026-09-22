@@ -7,12 +7,19 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
+/**
+ * Test the SSLCommerz service without contacting the real payment gateway.
+ * Http::fake() plays the same role as a mocked fetch/axios response in frontend tests.
+ */
 class SSLCommerzServiceTest extends TestCase
 {
+    /** Configure predictable sandbox credentials and endpoints before each test. */
     protected function setUp(): void
     {
+        // Boot Laravel first so helpers, configuration, and the service container are available.
         parent::setUp();
 
+        // Override only this test process's configuration; no real environment file is changed.
         config()->set([
             'sslcommerz.store_id' => 'sandbox-store',
             'sslcommerz.store_password' => 'sandbox-password',
@@ -22,8 +29,10 @@ class SSLCommerzServiceTest extends TestCase
         ]);
     }
 
+    /** Confirm checkout initialization returns a usable hosted-payment URL. */
     public function test_it_initializes_a_hosted_checkout_session(): void
     {
+        // Intercept the outgoing POST and return the response a successful gateway would send.
         Http::fake([
             'sandbox.sslcommerz.com/gwprocess/v4/api.php' => Http::response([
                 'status' => 'SUCCESS',
@@ -32,6 +41,7 @@ class SSLCommerzServiceTest extends TestCase
             ]),
         ]);
 
+        // Call the real service with the merchant, callback, and customer payload it expects.
         $result = (new SSLCommerzService)->initialize([
             'total_amount' => 500,
             'currency' => 'BDT',
@@ -49,12 +59,14 @@ class SSLCommerzServiceTest extends TestCase
             'cus_phone' => '01700000000',
         ]);
 
+        // Verify the service converts the gateway response into the app's expected result shape.
         $this->assertTrue($result['success']);
         $this->assertSame(
             'https://sandbox.sslcommerz.com/checkout/session-id',
             $result['gateway_url']
         );
 
+        // Also verify the service sent the important values to the correct gateway request.
         Http::assertSent(fn (Request $request) => $request->method() === 'POST'
             && $request['store_id'] === 'sandbox-store'
             && $request['tran_id'] === 'TXN-123'
@@ -62,8 +74,10 @@ class SSLCommerzServiceTest extends TestCase
         );
     }
 
+    /** Confirm gateway validation checks the transaction details and reports a safe payment. */
     public function test_it_validates_transaction_identity_amount_currency_and_risk(): void
     {
+        // Simulate SSLCommerz confirming a valid, non-risky transaction.
         Http::fake([
             'sandbox.sslcommerz.com/validator/api/validationserverAPI.php*' => Http::response([
                 'status' => 'VALID',
@@ -82,17 +96,21 @@ class SSLCommerzServiceTest extends TestCase
             'BDT'
         );
 
+        // These assertions are comparable to checking resolved API data in a frontend test.
         $this->assertTrue($result['valid']);
         $this->assertFalse($result['risky']);
 
+        // Ensure validation used the correct validation ID and sandbox store identity.
         Http::assertSent(fn (Request $request) => $request->method() === 'GET'
             && str_contains($request->url(), 'val_id=VALIDATION-123')
             && str_contains($request->url(), 'store_id=sandbox-store')
         );
     }
 
+    /** Confirm a gateway transaction ID mismatch is treated as possible tampering. */
     public function test_it_rejects_a_mismatched_merchant_transaction_id(): void
     {
+        // The fake gateway deliberately returns a different ID from the initiated transaction.
         Http::fake([
             'sandbox.sslcommerz.com/validator/api/validationserverAPI.php*' => Http::response([
                 'status' => 'VALID',
@@ -109,6 +127,7 @@ class SSLCommerzServiceTest extends TestCase
             'BDT'
         );
 
+        // The service must reject the response and return a useful explanation.
         $this->assertFalse($result['valid']);
         $this->assertSame(
             'Transaction ID does not match the initiated payment.',

@@ -6,13 +6,16 @@ use App\Models\Setting;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/** Validate partial setting edits and optional setting-image uploads. */
 class UpdateSettingRequest extends FormRequest
 {
+    /** Defer access control to the protected admin route group. */
     public function authorize(): bool
     {
         return true;
     }
 
+    /** Validate partial setting changes and supported image uploads. */
     public function rules(): array
     {
         $settingId = $this->route('settingId');

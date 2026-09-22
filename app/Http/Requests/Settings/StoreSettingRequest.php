@@ -6,13 +6,16 @@ use App\Models\Setting;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/** Validate a new typed application setting before it is persisted. */
 class StoreSettingRequest extends FormRequest
 {
+    /** Defer access control to the protected admin route group. */
     public function authorize(): bool
     {
         return true;
     }
 
+    /** Validate the setting key, type, value, visibility, and ordering metadata. */
     public function rules(): array
     {
         return [

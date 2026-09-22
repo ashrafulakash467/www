@@ -11,17 +11,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+/** Manage global and doctor-specific commission percentages for administrators. */
+/** Frontend mental model: this is the API layer behind commission settings forms and tables. */
 class AdminCommissionController extends Controller
 {
+    // Laravel injects the service here, like receiving a configured API client through props/context.
     public function __construct(private readonly EarningService $earnings) {}
 
+    /** Return default commission values and effective percentages for active doctors. */
     public function index(Request $request): JsonResponse
     {
+        // Backend authorization runs before any protected data is read or changed.
         $this->authorizeAdmin($request);
 
+        // Business calculations live in a service so controllers stay focused on HTTP input/output.
         $defaultDoctorPercentage = $this->earnings->getDefaultDoctorPercentage();
         $defaultAdminPercentage = $this->earnings->getDefaultAdminPercentage();
 
+        // Eloquent builds the SQL query; with('user') preloads names used by the response mapper.
         $doctors = Doctor::query()
             ->with('user')
             ->where('status', 'active')
@@ -47,10 +54,12 @@ class AdminCommissionController extends Controller
         ]);
     }
 
+    /** Replace the platform-wide doctor and administrator commission split. */
     public function updateDefaults(Request $request): JsonResponse
     {
         $this->authorizeAdmin($request);
 
+        // validate() is the backend equivalent of form-schema validation; failures return HTTP 422.
         $validated = $request->validate([
             'doctor_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
             'admin_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
@@ -59,17 +68,20 @@ class AdminCommissionController extends Controller
         $doctorPercentage = (float) $validated['doctor_percentage'];
         $adminPercentage = (float) $validated['admin_percentage'];
 
+        // Both shares must describe the complete consultation-fee distribution.
         if (abs(($doctorPercentage + $adminPercentage) - 100) > 0.01) {
             throw ValidationException::withMessages([
                 'admin_percentage' => ['Doctor percentage + Admin percentage must equal 100%.'],
             ]);
         }
 
+        // Store both defaults atomically so readers never see a mismatched pair.
         DB::transaction(function () use ($doctorPercentage, $adminPercentage): void {
             $this->upsertSetting('commission.default_doctor_percentage', $doctorPercentage);
             $this->upsertSetting('commission.default_admin_percentage', $adminPercentage);
         });
 
+        // Clear cached settings so the next request immediately sees the new percentages.
         Setting::forgetAllCaches();
 
         return response()->json([
@@ -82,6 +94,7 @@ class AdminCommissionController extends Controller
         ]);
     }
 
+    /** Assign a custom commission percentage to one doctor. */
     public function updateDoctor(Request $request, int $doctorId): JsonResponse
     {
         $this->authorizeAdmin($request);
@@ -101,6 +114,7 @@ class AdminCommissionController extends Controller
             ]);
         }
 
+        // findOrFail behaves like a fetch that automatically returns HTTP 404 when missing.
         $doctor = Doctor::with('user')->findOrFail($doctorId);
 
         $doctor->update([
@@ -121,12 +135,14 @@ class AdminCommissionController extends Controller
         ]);
     }
 
+    /** Remove a custom split so the doctor inherits the platform defaults. */
     public function removeDoctorPercentage(Request $request, int $doctorId): JsonResponse
     {
         $this->authorizeAdmin($request);
 
         $doctor = Doctor::findOrFail($doctorId);
 
+        // Null values intentionally restore the current global commission defaults.
         $doctor->update([
             'doctor_percentage' => null,
             'percentage_effective_from' => null,
@@ -138,8 +154,10 @@ class AdminCommissionController extends Controller
         ]);
     }
 
+    /** Create or update one private commission setting. */
     private function upsertSetting(string $key, float $value): void
     {
+        // first() returns a model or null, allowing this helper to implement update-or-create behavior.
         $setting = Setting::query()->where('key', $key)->first();
 
         if ($setting) {
@@ -158,9 +176,11 @@ class AdminCommissionController extends Controller
         }
     }
 
+    /** Guard commission operations against non-administrator accounts. */
     private function authorizeAdmin(Request $request): void
     {
         $user = $request->user();
+        // abort_unless stops the request with HTTP 403, similar to a protected frontend route guard.
         abort_unless($user?->hasAnyRole(['admin', 'super-admin']), 403);
     }
 }

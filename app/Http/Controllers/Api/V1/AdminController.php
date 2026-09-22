@@ -18,21 +18,34 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Provide administration data, user management, and doctor-verification actions.
+ *
+ * From a frontend perspective, each public method is an API handler: it reads the
+ * request, queries models, converts database records into UI-friendly arrays, and
+ * returns JSON. Private methods are reusable serializers and formatting helpers.
+ */
 class AdminController extends Controller
 {
+    /** Return the doctor-verification overview used by the admin dashboard. */
     public function index(): JsonResponse
     {
+        // Doctor::query() starts an Eloquent database query, similar to calling a data service.
         $pendingDoctors = Doctor::query()
+            // Eager-load the related user once so name/email access does not run extra queries per doctor.
             ->with('user')
             ->where('verification_status', 'pending')
             ->latest()
             ->get()
+            // map() plays a role similar to Array.map() in JavaScript: model in, UI object out.
             ->map(fn (Doctor $doctor) => $this->formatDoctorVerification($doctor))
             ->values();
 
+        // These count queries provide the small summary cards without loading full records.
         $approved = Doctor::query()->where('verification_status', 'approved')->count();
         $rejected = Doctor::query()->where('verification_status', 'rejected')->count();
 
+        // response()->json() serializes PHP arrays/collections into the HTTP JSON response.
         return response()->json([
             'pendingDoctors' => $pendingDoctors,
             'summary' => [
@@ -43,24 +56,30 @@ class AdminController extends Controller
         ]);
     }
 
+    /** Search and paginate user cards for administrative user management. */
     public function users(Request $request): JsonResponse
     {
+        // Request contains query parameters, submitted data, headers, and the authenticated user.
         $users = User::query()
+            // Load role-specific relationships now because the formatter needs them later.
             ->with([
                 'roles',
                 'doctor',
                 'patient',
             ])
+            // Deleted accounts stay out of the active admin list.
             ->where(function ($query): void {
                 $query->whereNull('status')
                     ->orWhere('status', '!=', 'deleted');
             })
             ->latest()
+            // Clamp per_page to 1–100 so a client cannot request an unbounded response.
             ->paginate(min(max($request->integer('per_page', 50), 1), 100));
 
         return response()->json([
             'success' => true,
             'message' => 'Users retrieved successfully.',
+            // Transform only the current page while keeping Laravel's pagination metadata.
             'users' => $users->getCollection()->map(fn (User $user) => $this->formatUserCard($user))->values(),
             'total' => $users->total(),
             'pagination' => [
@@ -71,15 +90,19 @@ class AdminController extends Controller
         ]);
     }
 
+    /** Build the combined datasets and totals displayed across admin modules. */
     public function data(): JsonResponse
     {
+        // Build the recent-appointments dataset consumed by the appointments widget.
         $appointments = Appointment::query()
+            // Dot notation loads nested relationships: appointment -> patient/doctor -> user.
             ->with(['patient.user', 'doctor.user'])
             ->latest('appointment_date')
             ->limit(100)
             ->get()
             ->map(fn (Appointment $appointment): array => [
                 'id' => (string) $appointment->id,
+                // The ?-> operator is PHP optional chaining; each ?? provides a fallback value.
                 'patient' => $appointment->patient?->name
                     ?? $appointment->patient?->user?->name
                     ?? ('Patient #'.$appointment->patient_id),
@@ -93,6 +116,7 @@ class AdminController extends Controller
             ])
             ->values();
 
+        // Build the recent-payments dataset independently from the appointment query.
         $payments = Payment::query()
             ->latest()
             ->limit(100)
@@ -100,6 +124,7 @@ class AdminController extends Controller
             ->map(fn (Payment $payment): array => [
                 'id' => (string) $payment->id,
                 'reference' => $payment->transaction_no ?? ('PAY-'.$payment->id),
+                // Integer cents avoid floating-point surprises in frontend calculations.
                 'amountCents' => (int) round(((float) ($payment->paid_amount ?? $payment->amount ?? 0)) * 100),
                 'status' => $this->adminDisplayLabel($payment->status, 'Pending'),
                 'note' => $payment->method
@@ -108,6 +133,7 @@ class AdminController extends Controller
             ])
             ->values();
 
+        // CMS pages are converted to the lightweight shape required by the content module.
         $content = CmsPage::query()
             ->latest()
             ->get()
@@ -119,6 +145,7 @@ class AdminController extends Controller
             ])
             ->values();
 
+        // Reports follow the same query -> map -> values pattern used above.
         $reports = Report::query()
             ->latest()
             ->get()
@@ -130,12 +157,14 @@ class AdminController extends Controller
             ])
             ->values();
 
+        // Only appointments awaiting a patient-request decision belong in this queue.
         $appointmentRequests = Appointment::query()
             ->with(['patient.user', 'doctor.user', 'payment'])
             ->whereIn('status', ['cancellation_requested', 'reschedule_requested'])
             ->latest()
             ->get()
             ->map(function (Appointment $appointment): array {
+                // meta is a JSON database column; patient_change_request holds the requested change.
                 $changeRequest = $appointment->meta['patient_change_request'] ?? [];
 
                 return [
@@ -160,6 +189,7 @@ class AdminController extends Controller
             })
             ->values();
 
+        // Audit logs tell the frontend who performed recent administrative actions.
         $logs = AuditLog::query()
             ->with('user')
             ->latest()
@@ -173,6 +203,7 @@ class AdminController extends Controller
             ])
             ->values();
 
+        // Keys here become top-level properties in the frontend's parsed response object.
         return response()->json([
             'appointments' => $appointments,
             'payments' => $payments,
@@ -183,14 +214,17 @@ class AdminController extends Controller
         ]);
     }
 
+    /** Convert database-friendly status keys into readable frontend labels. */
     private function adminDisplayLabel(?string $value, string $default = ''): string
     {
+        // Casting also handles null safely; trim removes accidental surrounding spaces.
         $raw = trim((string) $value);
 
         if ($raw === '') {
             return $default;
         }
 
+        // Known values get intentional wording instead of relying on automatic capitalization.
         $lookup = [
             'active' => 'Active',
             'inactive' => 'Inactive',
@@ -212,18 +246,22 @@ class AdminController extends Controller
             'super_admin' => 'Super Admin',
         ];
 
+        // Normalize "pending-review" and "PENDING_REVIEW" to the same lookup key.
         $key = strtolower(str_replace('-', '_', $raw));
 
+        // Unknown values still receive a reasonable human-readable fallback.
         return $lookup[$key] ?? ucwords(str_replace(['-', '_'], ' ', $key));
     }
 
+    /** Format an appointment time for display, with a safe date fallback. */
     private function formatAppointmentTime(Appointment $appointment): string
     {
         if ($appointment->start_time) {
             try {
+                // Carbon is Laravel's date/time helper, similar to using a date library in JavaScript.
                 return Carbon::parse($appointment->start_time)->format('g:i A');
             } catch (\Throwable) {
-                // fall through to the raw value
+                // Invalid legacy time values are returned unchanged instead of breaking the API.
             }
 
             return $appointment->start_time;
@@ -232,18 +270,24 @@ class AdminController extends Controller
         return $appointment->appointment_date?->format('M d') ?? '';
     }
 
+    /** Soft-delete a user account after applying administrative safety checks. */
     public function destroy(string $userId): JsonResponse
     {
+        // findOrFail returns the model or automatically produces a 404 response.
         $user = User::query()
             ->with(['doctor', 'patient'])
             ->findOrFail($userId);
 
+        // The User policy decides whether the current administrator may delete this account.
         Gate::authorize('delete', $user);
 
+        // A transaction is all-or-nothing: any failure rolls every database change back.
         DB::transaction(function () use ($user): void {
+            // Remove access-control assignments before deleting the account.
             $user->syncRoles([]);
             $user->syncPermissions([]);
 
+            // Revoke API tokens and browser sessions so the deleted user is logged out everywhere.
             DB::table('personal_access_tokens')
                 ->where('tokenable_type', User::class)
                 ->where('tokenable_id', $user->id)
@@ -253,6 +297,7 @@ class AdminController extends Controller
                 ->where('user_id', $user->id)
                 ->delete();
 
+            // User uses the model's configured delete behavior after related access is removed.
             $user->delete();
         });
 
@@ -261,27 +306,33 @@ class AdminController extends Controller
         ]);
     }
 
+    /** Approve or reject a pending doctor-verification request. */
     public function decision(Request $request, string $doctorId): JsonResponse
     {
+        // validate() returns clean data or stops with a 422 JSON validation response.
         $data = $request->validate([
             'decision' => ['required', 'string', 'in:approve,reject'],
             'rejectionReason' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        // Load the linked account because its status must change with the doctor profile.
         $doctor = Doctor::query()->with('user')->findOrFail($doctorId);
 
+        // This is a business rule beyond basic field validation.
         if ($data['decision'] === 'reject' && blank($data['rejectionReason'] ?? null)) {
             throw ValidationException::withMessages([
                 'rejectionReason' => ['A rejection reason is required when rejecting a doctor.'],
             ]);
         }
 
+        // forceFill assigns these trusted server-calculated values before save() writes them.
         $doctor->forceFill([
             'verification_status' => $data['decision'] === 'approve' ? 'approved' : 'rejected',
             'status' => $data['decision'] === 'approve' ? 'active' : 'inactive',
             'verified_at' => $data['decision'] === 'approve' ? now() : null,
         ])->save();
 
+        // Keep login eligibility synchronized with the professional verification result.
         $doctor->user?->forceFill([
             'status' => $data['decision'] === 'approve' ? 'active' : 'rejected',
         ])->save();
@@ -294,8 +345,10 @@ class AdminController extends Controller
         ]);
     }
 
+    /** Convert a doctor record into the admin verification-card shape. */
     private function formatDoctorVerification(Doctor $doctor): array
     {
+        // A formatter acts like a frontend adapter: database naming in, stable API naming out.
         $user = $doctor->user;
         $isActive = $doctor->verification_status === 'approved' && $doctor->status === 'active';
 
@@ -305,6 +358,7 @@ class AdminController extends Controller
             'email' => $user?->email ?? '',
             'phone' => $user?->phone ?? '',
             'specialty' => $doctor->specialty ?? 'General Medicine',
+            // Convert a comma-separated database value into a clean JavaScript-style array.
             'qualifications' => array_values(array_filter(array_map('trim', explode(',', (string) $doctor->qualification)))),
             'experienceYears' => max(0, $doctor->created_at ? now()->diffInYears($doctor->created_at) : 0),
             'licenseNumber' => $doctor->license_no,
@@ -316,6 +370,7 @@ class AdminController extends Controller
             'rejectionReason' => $doctor->verification_status === 'rejected'
                 ? 'Rejected by admin.'
                 : null,
+            // ISO timestamps are predictable for JavaScript Date parsing.
             'reviewedAt' => $doctor->updated_at?->toISOString(),
             'verifiedAt' => $doctor->verification_status === 'approved' ? $doctor->verified_at?->toISOString() : null,
             'isAvailable' => $isActive,
@@ -326,8 +381,10 @@ class AdminController extends Controller
         ];
     }
 
+    /** Normalize a user and role profile for the admin user list. */
     private function formatUserCard(User $user): array
     {
+        // The project supports both Spatie roles and an older users.role string.
         $legacyRole = strtolower(trim((string) $user->role));
         $roles = $user->getRoleNames()
             ->push($legacyRole)
@@ -337,6 +394,7 @@ class AdminController extends Controller
             ->all();
         $doctor = $user->doctor;
         $patient = $user->patient;
+        // Relationship-based inference is the final fallback for legacy accounts.
         $primaryRole = $roles[0] ?? $this->inferUserRole($user);
 
         return [
@@ -351,6 +409,7 @@ class AdminController extends Controller
             'lastLoginAt' => $user->last_login_at?->toISOString(),
             'createdAt' => $user->created_at?->toISOString(),
             'twoFactorEnabled' => (bool) $user->two_factor_enabled,
+            // These nested objects become either an object or null in JSON.
             'doctor' => $doctor ? [
                 'id' => (string) $doctor->id,
                 'specialty' => $doctor->specialty,
@@ -375,6 +434,7 @@ class AdminController extends Controller
         ];
     }
 
+    /** Infer a legacy user's role from whichever profile relationship exists. */
     private function inferUserRole(User $user): string
     {
         if ($user->doctor) {
@@ -388,6 +448,7 @@ class AdminController extends Controller
         return 'user';
     }
 
+    /** Map internal role names to labels displayed by the frontend. */
     private function userRoleLabel(string $role): string
     {
         return match ($role) {
@@ -399,12 +460,15 @@ class AdminController extends Controller
         };
     }
 
+    /** Resolve remote, public, and storage-backed doctor image paths to a usable URL. */
     private function doctorImageUrl(?string $imagePath): string
     {
+        // Always return a fallback so image components receive a valid source string.
         if (blank($imagePath)) {
             return '/globe.svg';
         }
 
+        // Already-absolute URLs do not need Laravel path conversion.
         if (str_starts_with($imagePath, 'http://') || str_starts_with($imagePath, 'https://')) {
             return $imagePath;
         }
@@ -415,6 +479,7 @@ class AdminController extends Controller
             return url($normalizedPath);
         }
 
+        // basename strips directory segments and protects the following filesystem checks.
         $filename = basename($normalizedPath);
         $publicPath = public_path('images/doctors/'.$filename);
 
@@ -422,6 +487,7 @@ class AdminController extends Controller
             return url('/images/doctors/'.$filename);
         }
 
+        // Storage::disk('public') checks Laravel's storage/app/public disk.
         if (Storage::disk('public')->exists('doctors/'.$filename)) {
             return url('/doctor-images/'.$filename);
         }

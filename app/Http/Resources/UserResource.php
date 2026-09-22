@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** Convert a user and any loaded role profiles into the frontend's stable API shape. */
 class UserResource extends JsonResource
 {
     /**
@@ -23,6 +24,7 @@ class UserResource extends JsonResource
             'status' => $this->status,
             'last_login_at' => $this->last_login_at?->toISOString(),
             'two_factor_enabled' => (bool) $this->two_factor_enabled,
+            // Role profiles are included only when controllers explicitly eager-load them.
             'patient' => $this->whenLoaded('patient', function (): array {
                 return [
                     'id' => (string) $this->patient->id,

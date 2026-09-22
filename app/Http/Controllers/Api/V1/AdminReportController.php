@@ -18,14 +18,20 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
+/** Build filterable administrative reports from the application's live records. */
+/** Frontend mental model: each report method prepares stats, rows, and pagination for one view. */
 class AdminReportController extends Controller
 {
+    // Constants keep status groups consistent across every report builder.
     private const PAID = ['paid', 'completed', 'settled', 'success', 'successful'];
     private const PENDING_PAYMENT = ['pending', 'unpaid', 'initiated', 'processing'];
     private const FAILED_PAYMENT = ['failed', 'cancelled', 'refund_failed'];
 
+    /** Dispatch a report key to the matching report builder. */
     public function show(Request $request, string $report): JsonResponse
     {
+        // Route the requested report name to its dedicated query and formatter.
+        // The URL report key selects one builder, like a frontend component registry.
         $data = match ($report) {
             'appointments' => $this->appointments($request),
             'doctors' => $this->doctors($request),
@@ -42,6 +48,7 @@ class AdminReportController extends Controller
         return response()->json(['success' => true] + $data);
     }
 
+    /** Build appointment statistics and table rows. */
     private function appointments(Request $request): array
     {
         $query = Appointment::query()->with(['patient.user', 'doctor.user']);
@@ -58,6 +65,7 @@ class AdminReportController extends Controller
         }
 
         $statsQuery = clone $query;
+        // Pagination keeps large report tables server-driven instead of loading every row.
         $page = $query->latest('appointment_date')->paginate($this->perPage($request));
 
         return $this->result([
@@ -76,6 +84,7 @@ class AdminReportController extends Controller
         ]);
     }
 
+    /** Build doctor registration and activity statistics. */
     private function doctors(Request $request): array
     {
         $query = Doctor::query()->with('user')->withCount('appointments');
@@ -100,6 +109,7 @@ class AdminReportController extends Controller
         ]);
     }
 
+    /** Build patient registration and appointment statistics. */
     private function patients(Request $request): array
     {
         $query = Patient::query()->with('user')->withCount('appointments');
@@ -122,6 +132,7 @@ class AdminReportController extends Controller
         ]);
     }
 
+    /** Build payment-status and revenue statistics. */
     private function payments(Request $request): array
     {
         $query = Payment::query()->with(['patient.user']);
@@ -147,6 +158,7 @@ class AdminReportController extends Controller
         ]);
     }
 
+    /** Build refund request and processing statistics. */
     private function refunds(Request $request): array
     {
         $query = Payment::query()->with('patient.user')->where('refund_status', '!=', 'not_requested');
@@ -171,6 +183,7 @@ class AdminReportController extends Controller
         ]);
     }
 
+    /** Build doctor/admin earning distribution statistics. */
     private function earnings(Request $request): array
     {
         $query = EarningTransaction::query()->with('doctor.user');
@@ -194,6 +207,7 @@ class AdminReportController extends Controller
         ]);
     }
 
+    /** Build prescription and medical-record activity statistics. */
     private function medicalRecords(Request $request): array
     {
         $records = MedicalRecord::query()->with(['patient.user', 'doctor.user']);
@@ -227,6 +241,7 @@ class AdminReportController extends Controller
         return $this->collectionResult(['Consultations' => $consultations, 'Prescriptions' => $prescriptionCount, 'Medical Records' => $recordCount], $items, $request);
     }
 
+    /** Build the administrative audit-log report. */
     private function audit(Request $request): array
     {
         $query = AuditLog::query()->with('user.roles');
@@ -248,8 +263,10 @@ class AdminReportController extends Controller
         ]);
     }
 
+    /** Group cross-module totals into daily, weekly, or monthly summaries. */
     private function dateSummary(Request $request): array
     {
+        // Array destructuring is equivalent to const [from, to] = dates() in JavaScript.
         [$from, $to] = $this->dates($request);
         $appointments = Appointment::whereBetween('appointment_date', [$from->toDateString(), $to->toDateString()])->get();
         $patients = Patient::whereBetween('created_at', [$from, $to])->get();
@@ -276,6 +293,7 @@ class AdminReportController extends Controller
 
     private function range(Builder $query, Request $request, string $column): void
     {
+        // Date filtering is shared so every report interprets the range consistently.
         [$from, $to] = $this->dates($request);
         $query->whereBetween($column, [$from, $to]);
     }
@@ -301,6 +319,7 @@ class AdminReportController extends Controller
 
     private function result(array $stats, LengthAwarePaginator $page, callable $formatter): array
     {
+        // Every paginated report returns the stable {stats, rows, meta} frontend shape.
         return ['stats' => $this->stats($stats), 'rows' => $page->getCollection()->map($formatter)->values(), 'meta' => $this->meta($page)];
     }
 

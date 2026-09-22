@@ -19,14 +19,21 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
+/** Handle API authentication, account registration, profiles, and password recovery. */
+/** Frontend mental model: these endpoints create the auth session data consumed by protected UI. */
 class AuthController extends Controller
 {
+    /** Authenticate credentials and issue a role-scoped Sanctum token. */
     public function login(LoginRequest $request): JsonResponse
     {
+        // FormRequest already ran the validation rules before this method started.
         $data = $request->validated();
+
+        // A single field supports either email or phone across role-specific login routes.
         $identifier = trim((string) ($data['identifier'] ?? $data['email'] ?? $data['phone'] ?? ''));
         $role = $request->route('role') ?? ($data['role'] ?? null);
 
+        // Query by either supported login identifier and preload authorization relationships.
         $user = User::query()
             ->with(['roles', 'permissions'])
             ->where(function ($query) use ($identifier): void {
@@ -36,6 +43,7 @@ class AuthController extends Controller
             })
             ->first();
 
+        // Hash::check safely compares plain input with the stored one-way password hash.
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'identifier' => ['Invalid login credentials.'],
@@ -62,6 +70,7 @@ class AuthController extends Controller
             ? $user->getRoleNames()->values()->all()
             : ['user'];
 
+        // Sanctum creates the bearer token the frontend sends on protected API requests.
         $token = $user->createToken('healthcare-api', $abilities)->plainTextToken;
 
         return response()->json([
@@ -77,6 +86,7 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Create a patient or doctor account with its related profile. */
     public function register(RegisterRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -88,6 +98,7 @@ class AuthController extends Controller
             ]);
         }
 
+        // Create the account first, then attach its role-specific profile below.
         $user = User::create([
             'name' => $data['name'],
             'role' => $role,
@@ -97,9 +108,11 @@ class AuthController extends Controller
             'status' => $role === 'doctor' ? 'pending_verification' : 'active',
         ]);
 
+        // Store role membership in the permission package's relationship tables.
         $user->assignRole($role);
 
         if ($role === 'doctor') {
+            // updateOrCreate prevents duplicate role profiles for the same user account.
             $doctor = Doctor::updateOrCreate(
                 ['user_id' => $user->id],
                 [
@@ -156,8 +169,10 @@ class AuthController extends Controller
         ], 201);
     }
 
+    /** Revoke the current API access token. */
     public function logout(Request $request): JsonResponse
     {
+        // Deleting the current token logs out this API session without deleting the account.
         $request->user()?->currentAccessToken()?->delete();
 
         return response()->json([
@@ -165,6 +180,7 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Return the authenticated account with roles and role profiles. */
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -179,6 +195,7 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Update the doctor's account, professional profile, location, and availability. */
     public function updateDoctorMe(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -239,6 +256,8 @@ class AuthController extends Controller
         $availableDates = $this->normalizeListField($validated['availableDates'] ?? null);
         $availableTimeSlots = $this->normalizeListField($validated['availableTimeSlots'] ?? null);
 
+        // Keep account fields, doctor details, and generated schedules synchronized.
+        // A transaction keeps User, Doctor, and schedule changes all-or-nothing.
         DB::transaction(function () use ($user, $doctor, $validated, $availableDates, $availableTimeSlots): void {
             $user->forceFill([
                 'name' => trim((string) $validated['name']),
@@ -287,6 +306,7 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Update the authenticated patient's account and healthcare profile. */
     public function updateMe(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -370,6 +390,7 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Generate and send a password-reset link without exposing account existence. */
     public function forgotPassword(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -395,6 +416,7 @@ class AuthController extends Controller
                 ],
             );
 
+            // Laravel notifications handle delivery; the controller does not send mail directly.
             $user->notify(new PasswordResetLinkNotification($token));
         } catch (\Throwable $throwable) {
             report($throwable);
@@ -409,6 +431,7 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Validate a reset token and replace the account password. */
     public function resetPassword(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -439,6 +462,7 @@ class AuthController extends Controller
             ]);
         }
 
+        // Reset tokens are stored hashed, so validation uses the same safe hash comparison.
         if (! Hash::check($data['token'], $tokenRecord->token)) {
             throw ValidationException::withMessages([
                 'token' => ['Invalid or expired reset token.'],
@@ -457,6 +481,7 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Normalize arrays, JSON strings, or comma-separated text into a clean list. */
     private function normalizeListField(mixed $value): array
     {
         if (is_array($value)) {

@@ -6,13 +6,16 @@ use App\Models\Doctor;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/** Render the public doctor directory and individual doctor profile pages. */
 class DoctorController extends Controller
 {
+    /** Render the public doctor-directory page. */
     public function index(): Response
     {
         return Inertia::render('Doctors/Index');
     }
 
+    /** Render one doctor's public profile using a limited field set. */
     public function show(Doctor $doctor): Response
     {
         $doctor->loadMissing('user');

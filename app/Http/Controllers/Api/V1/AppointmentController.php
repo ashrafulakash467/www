@@ -24,13 +24,19 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
+/** Coordinate appointment discovery, booking, changes, cancellation, and payment data. */
+/** Frontend mental model: this is the server-side state manager for the appointment workflow. */
 class AppointmentController extends Controller
 {
+    // Laravel injects workflow services here, comparable to importing configured API helpers.
     public function __construct(private readonly AppointmentBookingService $bookingService, private readonly RefundService $refundService) {}
 
+    /** List appointments visible to the authenticated doctor or patient. */
     public function my(Request $request): JsonResponse
     {
+        // Start with an ownership-scoped query so users cannot request somebody else's records.
         $query = $this->appointmentQueryForUser($request->user());
+        // Return a stable empty payload when the account has no matching role profile.
         if (! $query) {
             return response()->json([
                 'success' => true,
@@ -62,6 +68,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Return the administrator's paginated appointment overview. */
     public function adminIndex(Request $request): JsonResponse
     {
         $appointments = Appointment::query()
@@ -110,9 +117,11 @@ class AppointmentController extends Controller
         ]);
     }
 
+    // These read-only endpoints let guests review real doctor availability before login.
     public function bookingOptions(Request $request): JsonResponse
     {
         $doctorId = (string) $request->query('doctorId', '');
+        // The ternary selects a requested doctor or a sensible active default.
         $doctor = $doctorId !== ''
             ? Doctor::query()->with(['user', 'schedules'])->findOrFail($doctorId)
             : Doctor::query()->with(['user', 'schedules'])->where('status', 'active')->firstOrFail();
@@ -128,6 +137,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Return future dates that contain generated slots for a doctor. */
     public function availableDates(Request $request): JsonResponse
     {
         $doctorId = (string) $request->query('doctorId', '');
@@ -142,6 +152,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Return slot availability for one doctor and date. */
     public function availableSlots(Request $request): JsonResponse
     {
         $doctorId = (string) $request->query('doctorId', '');
@@ -151,6 +162,7 @@ class AppointmentController extends Controller
             ->whereDate('slot_date', $date)
             ->orderBy('start_time')
             ->get()
+            // Like Array.map(), convert database slot models into small frontend objects.
             ->map(function (AppointmentSlot $slot): array {
                 return [
                     'time' => Carbon::createFromFormat('H:i:s', $slot->start_time)->format('h:i A'),
@@ -165,10 +177,12 @@ class AppointmentController extends Controller
         ]);
     }
 
+    // Appointment creation and changes below remain protected by authenticated routes.
     public function book(StoreAppointmentRequest $request): JsonResponse
     {
         $data = $request->validated();
 
+        // The service owns transaction/slot-capacity rules; the controller returns its result.
         $appointment = $this->bookingService->book($request->user(), $data);
 
         return response()->json([
@@ -178,6 +192,7 @@ class AppointmentController extends Controller
         ], 201);
     }
 
+    /** Cancel directly or create a review request when payment rules require it. */
     public function cancel(CancelAppointmentRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -196,8 +211,10 @@ class AppointmentController extends Controller
             ]);
         }
 
+        // Paid confirmed appointments require review instead of immediate cancellation.
         if ($appointment->status === 'confirmed' && $hasCompletedPayment) {
             $meta = $appointment->meta ?? [];
+            // Store pending workflow details in JSON metadata until a doctor decides.
             $meta['patient_change_request'] = [
                 'type' => 'cancellation',
                 'reason' => $data['reason'],
@@ -241,6 +258,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Create or refresh the local payment record for an appointment. */
     public function payment(string $appointmentId, Request $request): JsonResponse
     {
         $appointment = $this->findAppointmentForCurrentUser($request->user(), $appointmentId);
@@ -292,6 +310,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Permanently remove an eligible cancelled appointment. */
     public function destroy(string $appointmentId, Request $request): JsonResponse
     {
         $appointment = $this->findAppointmentForCurrentUser(
@@ -321,6 +340,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Return the current appointment and alternative booking options. */
     public function rescheduleOptions(Request $request): JsonResponse
     {
         $appointmentId = (string) $request->query('appointmentId', '');
@@ -345,6 +365,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Return eligible replacement slots for a reschedule request. */
     public function rescheduleSlots(Request $request): JsonResponse
     {
         $appointmentId = (string) $request->query('appointmentId', '');
@@ -374,6 +395,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Reschedule directly or submit a doctor-reviewed change request. */
     public function reschedule(RescheduleAppointmentRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -393,6 +415,7 @@ class AppointmentController extends Controller
         }
 
         $appointment->loadMissing('doctor.schedules');
+        // Re-query the selected slot on the server; never trust availability shown earlier in UI.
         $slot = $this->slotForBooking((int) $appointment->doctor_id, $data['appointmentDate'], $data['slotTime']);
 
         if (! $slot) {
@@ -438,6 +461,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Let a doctor accept, reject, or reschedule an appointment request. */
     public function decision(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -454,6 +478,7 @@ class AppointmentController extends Controller
             ]);
         }
 
+        // Read the JSON request created by the patient-facing cancel/reschedule endpoint.
         $changeRequest = $appointment->meta['patient_change_request'] ?? null;
         if (is_array($changeRequest) && in_array($changeRequest['type'] ?? null, ['cancellation', 'reschedule'], true)) {
             if (! in_array($data['decision'], ['accepted', 'rejected'], true)) {
@@ -581,6 +606,7 @@ class AppointmentController extends Controller
     }
 
 
+    /** Build an appointment query scoped to the authenticated role profile. */
     private function appointmentQueryForUser(?Authenticatable $user): ?Builder
     {
         if (! $user instanceof User) {
@@ -594,6 +620,7 @@ class AppointmentController extends Controller
             'payment',
         ])->latest();
 
+        // Scope the same base query to the doctor or patient represented by the account.
         if ($user->hasRole('doctor') && $user->doctor) {
             $query->where('doctor_id', $user->doctor->id);
         } else {
@@ -608,6 +635,7 @@ class AppointmentController extends Controller
         return $query;
     }
 
+    /** Resolve or restore the patient profile associated with a user. */
     private function resolvePatient(?Authenticatable $user): Patient
     {
         if (! $user instanceof User) {
@@ -626,6 +654,7 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Find an appointment by public number while enforcing ownership. */
     private function findAppointmentForCurrentUser(?Authenticatable $user, string $appointmentId): ?Appointment
     {
         if (! $user instanceof User) {
@@ -639,6 +668,7 @@ class AppointmentController extends Controller
             'payment',
         ])->where('appointment_no', $appointmentId);
 
+        // Ownership constraints prevent access to another user's appointment.
         if ($user->hasRole('doctor') && $user->doctor) {
             $query->where('doctor_id', $user->doctor->id);
         } else {
@@ -660,6 +690,7 @@ class AppointmentController extends Controller
         return $query;
     }
 
+    /** Locate the exact normalized database slot selected by the frontend. */
     private function slotForBooking(int $doctorId, string $appointmentDate, string $slotTime): ?AppointmentSlot
     {
         $normalizedTime = $this->normalizeSlotTime($slotTime);
@@ -670,6 +701,7 @@ class AppointmentController extends Controller
             ->first();
     }
 
+    /** Convert an appointment and its relationships into the shared API shape. */
     private function formatAppointment(Appointment $appointment, array $overrides = []): array
     {
         $doctor = $appointment->doctor;
@@ -710,6 +742,7 @@ class AppointmentController extends Controller
         $canRequestChange = $appointment->status === 'confirmed'
             && $this->hasCompletedPayment($appointment);
 
+        // array_merge is comparable to object spread with later override values in JavaScript.
         return array_merge([
             'id' => (string) $appointment->appointment_no,
             'patient' => $patient ? [
@@ -744,6 +777,7 @@ class AppointmentController extends Controller
         ], $overrides);
     }
 
+    /** Return only doctor information required by booking interfaces. */
     private function formatDoctor(?Doctor $doctor): array
     {
         if (! $doctor) {
@@ -813,6 +847,7 @@ class AppointmentController extends Controller
         return Storage::disk('public')->url($imagePath);
     }
 
+    /** Resolve the chargeable consultation amount for an appointment. */
     private function appointmentAmount(Appointment $appointment): int
     {
         if ($appointment->payment) {
@@ -827,6 +862,7 @@ class AppointmentController extends Controller
         return 'TRX-'.$appointmentNo.'-'.Str::upper(Str::random(4));
     }
 
+    /** Convert human-readable time input to the database time format. */
     private function normalizeSlotTime(string $slotTime): string
     {
         $slotTime = trim($slotTime);
@@ -891,6 +927,7 @@ class AppointmentController extends Controller
         return Carbon::createFromFormat('H:i:s', $slot->start_time)->format('h:i A');
     }
 
+    /** Restore slot capacity after a booking is cancelled or rejected. */
     private function releaseSlotIfNeeded(Appointment $appointment): void
     {
         if (! $appointment->appointment_slot_id) {
@@ -903,12 +940,14 @@ class AppointmentController extends Controller
             return;
         }
 
+        // Return one unit of capacity without ever allowing a negative booking count.
         $slot->forceFill([
             'booked_count' => max(0, $slot->booked_count - 1),
             'status' => max(0, $slot->booked_count - 1) === 0 ? 'available' : $slot->status,
         ])->save();
     }
 
+    /** Check both appointment and payment records for a completed payment state. */
     private function hasCompletedPayment(Appointment $appointment): bool
     {
         $completedStatuses = ['paid', 'completed', 'settled', 'success', 'successful'];
@@ -920,6 +959,7 @@ class AppointmentController extends Controller
         return count(array_intersect($completedStatuses, $paymentStatuses)) > 0;
     }
 
+    /** Return refund metadata only after a refund workflow has started. */
     private function formatRefund(Payment $payment): ?array
     {
         if ($payment->refund_status === 'not_requested' || $payment->refund_status === null) {

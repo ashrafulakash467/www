@@ -14,10 +14,14 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
+/** Serve the public doctor directory and administrative doctor-management endpoints. */
+/** Frontend mental model: public search and admin CRUD screens share this doctor data source. */
 class DoctorController extends Controller
 {
+    /** Search and filter public doctors using database-backed profile fields. */
     public function search(Request $request): JsonResponse
     {
+        // Normalize optional directory filters before composing the database query.
         $search = trim((string) $request->query('search', ''));
         $specialty = trim((string) $request->query('specialty', ''));
         $location = trim((string) $request->query('location', ''));
@@ -27,9 +31,11 @@ class DoctorController extends Controller
         $page = max((int) $request->query('page', 1), 1);
         $limit = min(max((int) $request->query('limit', 14), 1), 50);
 
+        // Exclude deactivated accounts while retaining one base for counts and results.
         $baseQuery = Doctor::query()->whereHas('user', fn ($query) => $query->where('status', '!=', 'deleted'));
         $query = (clone $baseQuery)->with('user');
 
+        // when() conditionally adds SQL filters only when the frontend supplied a value.
         $query->when($search !== '', function ($builder) use ($search): void {
             $builder->where(function ($searchQuery) use ($search): void {
                 $searchQuery
@@ -75,6 +81,7 @@ class DoctorController extends Controller
         };
 
         $doctors = $query->paginate($limit, ['*'], 'page', $page);
+        // Clone the base query so filter-option queries do not modify the result query above.
         $filterDoctors = (clone $baseQuery)->get(['specialty', 'city', 'state', 'country', 'gender']);
 
         return response()->json([
@@ -95,8 +102,10 @@ class DoctorController extends Controller
         ]);
     }
 
+    /** Return one doctor's public profile without private account information. */
     public function show(string $doctorId): JsonResponse
     {
+        // findOrFail returns HTTP 404 automatically if this public doctor does not exist.
         $doctor = Doctor::query()
             ->with('user')
             ->findOrFail($doctorId);
@@ -106,6 +115,7 @@ class DoctorController extends Controller
         ]);
     }
 
+    /** Search and paginate the expanded doctor list used by administrators. */
     public function adminIndex(Request $request): JsonResponse
     {
         $query = Doctor::query()
@@ -148,8 +158,10 @@ class DoctorController extends Controller
         ]);
     }
 
+    /** Create a doctor account, profile, optional image, and schedule. */
     public function adminStore(Request $request): JsonResponse
     {
+        // Server-side validation protects the database even if frontend validation is bypassed.
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
@@ -178,6 +190,8 @@ class DoctorController extends Controller
 
         $availableDates = $this->normalizeListField($data['available_dates'] ?? null);
         $availableTimeSlots = $this->normalizeListField($data['available_time_slots'] ?? null);
+        // User, doctor profile, image, and schedule must succeed or fail together.
+        // One transaction keeps the login account and doctor profile from becoming inconsistent.
         $doctor = DB::transaction(function () use ($data, $request, $availableDates, $availableTimeSlots): Doctor {
             $user = User::create([
                 'name' => $data['name'],
@@ -230,6 +244,7 @@ class DoctorController extends Controller
         ], 201);
     }
 
+    /** Update account and doctor fields while preserving optional existing values. */
     public function adminUpdate(Request $request, string $doctorId): JsonResponse
     {
         $data = $request->validate([
@@ -333,6 +348,7 @@ class DoctorController extends Controller
         ]);
     }
 
+    /** Remove a doctor and clean up the associated stored image. */
     public function adminDestroy(string $doctorId): JsonResponse
     {
         $doctor = Doctor::query()->with('user')->findOrFail($doctorId);
@@ -348,8 +364,10 @@ class DoctorController extends Controller
         ]);
     }
 
+    /** Shape a doctor record for public discovery and booking screens. */
     private function formatPublicDoctor(Doctor $doctor): array
     {
+        // This explicit allow-list prevents private User/model fields from leaking publicly.
         return [
             'id' => (string) $doctor->id,
             'name' => $doctor->user?->name ?? 'Unknown Doctor',
@@ -361,6 +379,7 @@ class DoctorController extends Controller
             'city' => $doctor->city,
             'state' => $doctor->state,
             'country' => $doctor->country,
+            // Coordinates are chamber coordinates used only for real distance calculations.
             'latitude' => $doctor->latitude,
             'longitude' => $doctor->longitude,
             'gender' => $doctor->gender ?? 'Unspecified',
@@ -373,6 +392,7 @@ class DoctorController extends Controller
         ];
     }
 
+    /** Add management-only fields to the public doctor representation. */
     private function formatAdminDoctor(Doctor $doctor): array
     {
         $user = $doctor->user;
@@ -409,6 +429,7 @@ class DoctorController extends Controller
         ];
     }
 
+    /** Produce a readable location using the most specific available fields. */
     private function doctorLocation(Doctor $doctor): string
     {
         return $doctor->city
@@ -417,6 +438,7 @@ class DoctorController extends Controller
             ?: 'Unavailable';
     }
 
+    /** Resolve stored and legacy doctor images to a browser-accessible URL. */
     private function doctorImageUrl(Doctor $doctor): string
     {
         if (blank($doctor->image_path)) {
@@ -459,6 +481,7 @@ class DoctorController extends Controller
         return '/images/doctors/'.$filename;
     }
 
+    /** Treat only active and approved doctors as publicly available. */
     private function isDoctorAvailable(Doctor $doctor): bool
     {
         return $doctor->status === 'active' && $doctor->verification_status === 'approved';
@@ -498,8 +521,10 @@ class DoctorController extends Controller
         )));
     }
 
+    /** Safely stream a doctor image from an approved storage location. */
     public function image(string $filename)
     {
+        // basename prevents callers from escaping the approved image directories.
         $safeFilename = basename($filename);
         $localPath = $this->doctorImageDirectory().DIRECTORY_SEPARATOR.$safeFilename;
 
@@ -520,6 +545,7 @@ class DoctorController extends Controller
         abort(404);
     }
 
+    /** Store an uploaded doctor image using a collision-resistant filename. */
     private function storeDoctorImage($uploadedImage): string
     {
         $directory = $this->doctorImageDirectory();
@@ -532,6 +558,7 @@ class DoctorController extends Controller
         return 'images/doctors/'.$filename;
     }
 
+    /** Delete managed doctor images while leaving shared fallback assets untouched. */
     private function deleteDoctorImage(?string $imagePath): void
     {
         if (blank($imagePath) || str_starts_with($imagePath, 'http://') || str_starts_with($imagePath, 'https://')) {

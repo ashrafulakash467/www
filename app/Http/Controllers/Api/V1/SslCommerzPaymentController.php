@@ -14,8 +14,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+/** Manage SSLCommerz checkout creation, callbacks, status updates, and return redirects. */
+/** Frontend mental model: this bridges local payment state with an external checkout provider. */
 class SslCommerzPaymentController extends Controller
 {
+    // Dependency injection supplies focused services instead of putting every concern here.
     public function __construct(
         private readonly PaymentService $payments,
         private readonly RefundService $refunds,
@@ -27,6 +30,8 @@ class SslCommerzPaymentController extends Controller
      */
     public function initiate(Request $request): JsonResponse
     {
+        // Validate ownership before preparing a gateway transaction.
+        // The frontend submits an appointment number; the server revalidates ownership and state.
         $validated = $request->validate([
             'appointment_id' => ['required', 'string', 'max:100'],
         ]);
@@ -54,6 +59,7 @@ class SslCommerzPaymentController extends Controller
 
         $payment = $this->preparePayment($appointment, $amount);
         $returnBaseUrl = $this->returnBaseUrlForRequest($request);
+        // PaymentService performs the outbound HTTP request to SSLCommerz.
         $result = $this->payments->initializeGateway($this->gatewayPayload($appointment, $payment));
 
         if (! $result['success']) {
@@ -102,8 +108,10 @@ class SslCommerzPaymentController extends Controller
         return $this->initiate($request);
     }
 
+    /** Process a successful browser callback and return to the frontend. */
     public function success(Request $request): RedirectResponse
     {
+        // Browser callbacks and server IPNs share one validation path.
         $result = $this->processSuccessfulNotification($request);
 
         return $this->redirectToFrontend(
@@ -113,6 +121,7 @@ class SslCommerzPaymentController extends Controller
         );
     }
 
+    /** Record a failed browser callback before redirecting to the result page. */
     public function fail(Request $request): RedirectResponse
     {
         $payment = $this->recordUnsuccessfulPayment($request, 'failed');
@@ -120,6 +129,7 @@ class SslCommerzPaymentController extends Controller
         return $this->redirectToFrontend('fail', $payment, $request->string('tran_id')->toString());
     }
 
+    /** Record a cancelled checkout before redirecting to the result page. */
     public function cancel(Request $request): RedirectResponse
     {
         $payment = $this->recordUnsuccessfulPayment($request, 'cancelled');
@@ -132,6 +142,7 @@ class SslCommerzPaymentController extends Controller
      */
     public function ipn(Request $request): JsonResponse
     {
+        // IPN is server-to-server; validation occurs before payment state changes.
         $status = strtoupper($request->string('status')->toString());
 
         if (in_array($status, ['VALID', 'VALIDATED'], true)) {
@@ -171,6 +182,7 @@ class SslCommerzPaymentController extends Controller
         ], $payment ? 200 : 404);
     }
 
+    /** Return checkout details for an appointment owned by the requester. */
     public function paymentDetails(Request $request, string $appointmentId): JsonResponse
     {
         $appointment = $this->appointmentForUser($request, $appointmentId);
@@ -188,6 +200,7 @@ class SslCommerzPaymentController extends Controller
         ]);
     }
 
+    /** Refresh and return the current refund status for an owned appointment. */
     public function refundStatus(Request $request, string $appointmentId): JsonResponse
     {
         $appointment = $this->appointmentForUser($request, $appointmentId);
@@ -202,11 +215,13 @@ class SslCommerzPaymentController extends Controller
         ] : null]);
     }
 
+    /** Provide a compatibility response for the example hosted-checkout client. */
     public function exampleHostedCheckout(Request $request, string $appointmentId): JsonResponse
     {
         return $this->paymentDetails($request, $appointmentId);
     }
 
+    /** Resolve an appointment and enforce role-based ownership. */
     private function appointmentForUser(Request $request, string $appointmentNumber): Appointment
     {
         $query = Appointment::with(['patient', 'patient.user', 'doctor', 'payment'])
@@ -220,6 +235,7 @@ class SslCommerzPaymentController extends Controller
         return $query->firstOrFail();
     }
 
+    /** Create or update the pending local payment before contacting the gateway. */
     private function preparePayment(Appointment $appointment, float $amount): Payment
     {
         $attributes = [
@@ -303,6 +319,7 @@ class SslCommerzPaymentController extends Controller
             ];
         }
 
+        // Gateway callbacks may retry, so an already-paid record is a successful no-op.
         if (strtolower($payment->status) === 'paid') {
             return [
                 'status' => 'success',
@@ -311,6 +328,7 @@ class SslCommerzPaymentController extends Controller
             ];
         }
 
+        // Never trust callback fields alone; validate the transaction with the gateway server.
         $validation = $this->payments->validateGatewayTransaction(
             $validationId,
             $payment->transaction_no,
@@ -336,6 +354,7 @@ class SslCommerzPaymentController extends Controller
             ];
         }
 
+        // Risky transactions remain pending for review instead of being marked paid.
         if ($validation['risky'] ?? false) {
             $payment->update([
                 'status' => 'reviewing',
@@ -358,6 +377,7 @@ class SslCommerzPaymentController extends Controller
         ];
     }
 
+    /** Persist failure or cancellation details unless payment already completed. */
     private function recordUnsuccessfulPayment(Request $request, string $status): ?Payment
     {
         $payment = Payment::where('transaction_no', $request->string('tran_id')->toString())->first();
@@ -375,6 +395,7 @@ class SslCommerzPaymentController extends Controller
         return $payment;
     }
 
+    /** Build a trusted frontend return URL containing payment result parameters. */
     private function redirectToFrontend(
         string $status,
         ?Payment $payment,
@@ -408,6 +429,7 @@ class SslCommerzPaymentController extends Controller
             ?? rtrim((string) config('app.frontend_url'), '/');
     }
 
+    /** Accept redirect origins only when their host is configured as trusted. */
     private function sanitizeReturnBaseUrl(?string $url): ?string
     {
         if (! $url || ! filter_var($url, FILTER_VALIDATE_URL)) {
@@ -415,6 +437,7 @@ class SslCommerzPaymentController extends Controller
         }
 
         $parts = parse_url($url);
+        // Only browser-safe HTTP(S) origins can receive post-payment redirects.
         if (! in_array($parts['scheme'] ?? null, ['http', 'https'], true) || empty($parts['host'])) {
             return null;
         }
@@ -438,6 +461,7 @@ class SslCommerzPaymentController extends Controller
             return trim($candidate, '/');
         });
 
+        // The allow-list prevents the return flow from becoming an open-redirect vulnerability.
         if (! $allowedHosts->contains($hostWithPort) && ! $allowedHosts->contains($host)) {
             return null;
         }
@@ -452,8 +476,10 @@ class SslCommerzPaymentController extends Controller
         return rtrim($authority.$path, '/');
     }
 
+    /** Atomically finalize payment state and create the matching earning entry. */
     private function markPaymentAsPaid(Payment $payment, array $gatewayResponse): void
     {
+        // Locking prevents duplicate callbacks from crediting one payment twice.
         DB::transaction(function () use ($payment, $gatewayResponse): void {
             $lockedPayment = Payment::with('appointment')->lockForUpdate()->findOrFail($payment->id);
 

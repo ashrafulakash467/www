@@ -5,6 +5,7 @@ namespace App\Http\Requests\Auth;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
+/** Validate credentials accepted by the unified email, phone, or username login. */
 class LoginRequest extends FormRequest
 {
     /**

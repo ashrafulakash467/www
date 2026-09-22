@@ -13,10 +13,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+/** Expose administrative payment, revenue, refund, and payment-setting operations. */
+/** Frontend mental model: this controller backs payment dashboards, filters, and action buttons. */
 class AdminPaymentController extends Controller
 {
+    /** Calculate payment and revenue totals for the admin overview. */
     public function overview(Request $request): JsonResponse
     {
+        // Backend permission checks are mandatory even if the frontend hides this screen.
         $this->authorizeAdmin($request, 'payments.view');
         $query = $this->filteredQuery($request);
         $paid = ['paid', 'completed', 'settled', 'success', 'successful'];
@@ -42,11 +46,13 @@ class AdminPaymentController extends Controller
         ]);
     }
 
+    /** Return a filtered, sorted, and paginated payment list. */
     public function index(Request $request): JsonResponse
     {
         $this->authorizeAdmin($request, 'payments.view');
         $payments = $this->filteredQuery($request)
             ->orderBy($this->sortColumn($request->string('sort')->toString()), $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc')
+            // The paginator produces rows plus page/total metadata for a server-driven table.
             ->paginate(min(max($request->integer('per_page', 20), 1), 100))
             ->withQueryString();
 
@@ -62,6 +68,7 @@ class AdminPaymentController extends Controller
         ]);
     }
 
+    /** Return full details for one authorized payment record. */
     public function show(Request $request, Payment $payment): JsonResponse
     {
         $this->authorizeAdmin($request, 'payments.view_details');
@@ -71,6 +78,7 @@ class AdminPaymentController extends Controller
         return response()->json(['success' => true, 'data' => $this->formatPayment($payment, true)]);
     }
 
+    /** List payments that have entered the refund workflow. */
     public function refunds(Request $request): JsonResponse
     {
         $this->authorizeAdmin($request, 'refunds.view');
@@ -87,6 +95,7 @@ class AdminPaymentController extends Controller
         ]);
     }
 
+    /** Aggregate revenue by method, gateway, and recent date. */
     public function revenue(Request $request): JsonResponse
     {
         $this->authorizeAdmin($request, 'payments.revenue');
@@ -107,22 +116,27 @@ class AdminPaymentController extends Controller
         ]]);
     }
 
+    /** Approve a pending refund request without processing it yet. */
     public function approveRefund(Request $request, Payment $payment): JsonResponse
     {
         $this->authorizeAdmin($request, 'refunds.approve');
         return $this->changeRefundStatus($request, $payment, 'approved', 'Refund approved');
     }
 
+    /** Reject a pending refund request and retain the reason. */
     public function rejectRefund(Request $request, Payment $payment): JsonResponse
     {
         $this->authorizeAdmin($request, 'refunds.reject');
         return $this->changeRefundStatus($request, $payment, 'rejected', 'Refund rejected');
     }
 
+    /** Submit an approved refund to the configured payment gateway. */
     public function processRefund(Request $request, Payment $payment, RefundService $refunds): JsonResponse
     {
         $this->authorizeAdmin($request, 'refunds.process');
+        // Lock the payment to prevent two administrators from processing one refund.
         $payment = DB::transaction(function () use ($payment, $request, $refunds): Payment {
+            // lockForUpdate prevents two admins from processing this refund simultaneously.
             $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
             if (! in_array($locked->refund_status, ['approved', 'requested'], true)) {
                 throw ValidationException::withMessages(['refund' => ['This refund is not approved or is already processed.']]);
@@ -134,6 +148,7 @@ class AdminPaymentController extends Controller
         return response()->json(['success' => true, 'message' => 'Refund submitted to the payment gateway.', 'data' => $this->formatPayment($payment->fresh(), true)]);
     }
 
+    /** Return the payment settings editable by administrators. */
     public function settings(Request $request): JsonResponse
     {
         $this->authorizeAdmin($request, 'payments.edit');
@@ -141,6 +156,7 @@ class AdminPaymentController extends Controller
         return response()->json(['success' => true, 'data' => Setting::query()->whereIn('key', $keys)->get()->mapWithKeys(fn(Setting $setting) => [$setting->key => $setting->castValue()])]);
     }
 
+    /** Validate and persist a partial payment-settings update. */
     public function updateSettings(Request $request): JsonResponse
     {
         $this->authorizeAdmin($request, 'payments.edit');
@@ -155,9 +171,11 @@ class AdminPaymentController extends Controller
             'required' => ['nullable', 'boolean'],
         ]);
 
+        // Apply the submitted payment configuration as one consistent settings update.
         DB::transaction(function () use ($data): void {
             foreach ($data as $key => $value) {
                 $settingKey = 'payment:' . $key;
+                // firstOrNew returns the existing model or a new unsaved model with this key.
                 $setting = Setting::query()->firstOrNew(['key' => $settingKey]);
                 $setting->forceFill([
                     'key' => $settingKey,
@@ -171,6 +189,7 @@ class AdminPaymentController extends Controller
             }
         });
 
+        // Clear cached configuration so later requests immediately see the update.
         Setting::forgetAllCaches();
         $this->audit($request, 'Payment settings changed', null);
         return response()->json(['success' => true, 'message' => 'Payment settings updated.']);
@@ -178,6 +197,7 @@ class AdminPaymentController extends Controller
 
     private function changeRefundStatus(Request $request, Payment $payment, string $status, string $message): JsonResponse
     {
+        // Row locking makes approve/reject transitions safe under concurrent requests.
         $updated = DB::transaction(function () use ($request, $payment, $status, $message): Payment {
             $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
             if ($locked->refund_status !== 'requested') throw ValidationException::withMessages(['refund' => ['Only pending refunds can be changed.']]);
@@ -188,8 +208,10 @@ class AdminPaymentController extends Controller
         return response()->json(['success' => true, 'message' => $message . '.', 'data' => $this->formatPayment($updated, true)]);
     }
 
+    /** Build the shared payment query from search, status, and date filters. */
     private function filteredQuery(Request $request): Builder
     {
+        // This query builder is like composing filters for a frontend data-grid request.
         $query = Payment::query()->with(['appointment', 'patient.user', 'doctor.user']);
         $search = trim($request->string('search')->toString());
         if ($search !== '') $query->where(fn(Builder $builder) => $builder->where('transaction_no', 'like', "%{$search}%")->orWhere('gateway_transaction_id', 'like', "%{$search}%")->orWhereHas('patient', fn(Builder $patient) => $patient->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
@@ -232,6 +254,7 @@ class AdminPaymentController extends Controller
         });
     }
 
+    /** Normalize payment relationships and amounts for API consumers. */
     private function formatPayment(Payment $payment, bool $details = false): array
     {
         $patient = $payment->patient;
@@ -267,6 +290,7 @@ class AdminPaymentController extends Controller
     {
         $user = $request->user();
 
+        // First confirm the role, then require the granular permission for this action.
         abort_unless($user?->hasAnyRole(['admin', 'super-admin']), 403);
         abort_unless($user->can($permission) || $user->can('manage-payments'), 403);
     }

@@ -14,10 +14,14 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
+/** Read and write authorized prescriptions, consultation notes, and medical documents. */
+/** Frontend mental model: it joins clinical records into the nested objects shown in record screens. */
 class MedicalRecordController extends Controller
 {
+    /** List medical records scoped to the authenticated patient's or doctor's access. */
     public function index(Request $request): JsonResponse
     {
+        // The authenticated account determines which medical records may be queried.
         $user = $request->user();
 
         if (! $user) {
@@ -26,6 +30,7 @@ class MedicalRecordController extends Controller
             ]);
         }
 
+        // Begin with one rich query, then restrict it according to the user's role.
         $query = Prescription::query()->with([
             'doctor.user',
             'patient.user',
@@ -34,6 +39,7 @@ class MedicalRecordController extends Controller
             'items',
         ])->latest('issued_at')->latest();
 
+        // Role checks add ownership filters; frontend route guards alone are not security.
         if ($user->hasRole('doctor')) {
             if (! $user->doctor) {
                 return response()->json([
@@ -143,6 +149,7 @@ class MedicalRecordController extends Controller
         ]);
     }
 
+    /** Save a doctor's consultation note for an owned appointment. */
     public function storeNote(Request $request, string $appointmentId): JsonResponse
     {
         $user = $request->user();
@@ -151,6 +158,7 @@ class MedicalRecordController extends Controller
             abort(403);
         }
 
+        // Backend validation remains authoritative if client-side checks are bypassed.
         $data = $request->validate([
             'notes' => ['required', 'string', 'min:3'],
             'chiefComplaint' => ['nullable', 'string'],
@@ -159,6 +167,7 @@ class MedicalRecordController extends Controller
             'attachments' => ['nullable', 'array'],
         ]);
 
+        // Query through the doctor scope so one doctor cannot edit another doctor's record.
         $appointment = $this->appointmentForDoctor($user->doctor->id, $appointmentId);
 
         if (! $appointment) {
@@ -194,6 +203,7 @@ class MedicalRecordController extends Controller
         ], 201);
     }
 
+    /** Create or replace the prescription and medicine items for a consultation. */
     public function storePrescription(Request $request, string $appointmentId): JsonResponse
     {
         $user = $request->user();
@@ -226,6 +236,8 @@ class MedicalRecordController extends Controller
             ]);
         }
 
+        // Save the record, prescription header, and medicine items atomically.
+        // The transaction commits the record, prescription, and items as one state change.
         $record = DB::transaction(function () use ($appointment, $user, $data) {
             $medicalRecord = MedicalRecord::firstOrNew([
                 'appointment_id' => $appointment->id,
@@ -312,6 +324,7 @@ class MedicalRecordController extends Controller
         ], $wasUpdated ? 200 : 201);
     }
 
+    /** Attach a validated clinical document to the consultation record. */
     public function storeDocument(Request $request, string $appointmentId): JsonResponse
     {
         $user = $request->user();
@@ -400,6 +413,7 @@ class MedicalRecordController extends Controller
         ], 201);
     }
 
+    /** Find an appointment only when it belongs to the specified doctor. */
     private function appointmentForDoctor(int $doctorId, string $appointmentId): ?Appointment
     {
         return Appointment::query()
@@ -425,6 +439,8 @@ class MedicalRecordController extends Controller
         ];
     }
 
+    /** Normalize a prescription and its medicine items for API output. */
+    // Formatter methods below act like frontend adapters: models in, stable JSON objects out.
     private function formatPrescription(Prescription $prescription): array
     {
         return [
@@ -483,6 +499,7 @@ class MedicalRecordController extends Controller
         ];
     }
 
+    /** Format the consultation-note portion of a medical record. */
     private function formatMedicalNote(MedicalRecord $record): array
     {
         return [
@@ -498,6 +515,7 @@ class MedicalRecordController extends Controller
         ];
     }
 
+    /** Collect prescription and uploaded-document attachments for one record. */
     private function formatAttachments(MedicalRecord $record): array
     {
         return collect($record->attachments ?? [])
@@ -570,6 +588,7 @@ class MedicalRecordController extends Controller
         ];
     }
 
+    /** Convert a completed payment into a downloadable invoice descriptor. */
     private function formatInvoice(Payment $payment): array
     {
         $amount = (float) ($payment->total_amount ?? $payment->amount ?? 0);

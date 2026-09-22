@@ -14,15 +14,22 @@ use App\Http\Controllers\StaticPageController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Web routes return browser pages. Think of each entry as mapping a URL to a
+// controller function, similar to connecting a frontend router path to a page component.
+// name() gives the route a reusable identifier so URLs do not need to be hard-coded.
+
+// Public pages that anyone can open without signing in.
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/about', [StaticPageController::class, 'about'])->name('about');
 Route::get('/contact', [StaticPageController::class, 'contact'])->name('contact');
 Route::get('/departments', [StaticPageController::class, 'departments'])->name('departments.index');
 Route::get('/services', [StaticPageController::class, 'services'])->name('services.index');
+// {slug} is a dynamic URL value; where() limits it to safe lowercase URL characters.
 Route::get('/policies/{slug}', [StaticPageController::class, 'policy'])
     ->where('slug', '[a-z0-9-]+')
     ->name('policies.show');
 
+// All routes in this block use DoctorController, so only the method name is repeated.
 Route::controller(DoctorController::class)->group(function (): void {
     Route::get('/doctors', 'index')->name('doctors.index');
     Route::get('/find-doctor', 'index')->name('doctors.search');
@@ -33,7 +40,9 @@ Route::controller(DoctorController::class)->group(function (): void {
 // appointment remains protected by the authenticated patient API route.
 Route::get('/appointment/book', [AppointmentController::class, 'create'])->name('appointments.create');
 
+// guest middleware allows only signed-out visitors to access authentication pages.
 Route::middleware('guest')->group(function (): void {
+    // Inertia::render() connects these Laravel URLs directly to React page components.
     Route::get('/login', fn () => Inertia::render('Auth/Login'))->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::get('/admin/login', fn () => Inertia::render('Auth/Login', ['initialRole' => 'admin']))->name('admin.login');
@@ -49,11 +58,14 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/reset-password', [ApiAuthController::class, 'resetPassword'])->name('password.update');
 });
 
+// The payment provider redirects the browser here after checkout completes or fails.
 Route::get('/payment/return', [PaymentController::class, 'result'])->name('payments.return');
 
+// Every route below requires a signed-in web session.
 Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
+    // prefix('patient') adds /patient to URLs; name('patient.') prefixes route names.
     Route::middleware('role:patient')->prefix('patient')->name('patient.')->group(function (): void {
         Route::get('/dashboard', [PatientDashboardController::class, 'index'])->name('dashboard');
         Route::get('/appointments', [PatientDashboardController::class, 'appointments'])->name('appointments');
@@ -63,6 +75,7 @@ Route::middleware('auth')->group(function (): void {
         Route::redirect('/dashboard/settings', '/patient/settings')->name('dashboard.settings');
     });
 
+    // Patient-only pages that intentionally live outside the /patient URL prefix.
     Route::middleware('role:patient')->group(function (): void {
         Route::get('/appointment/reschedule', [AppointmentController::class, 'edit'])->name('appointments.reschedule');
         Route::get('/payment', [PaymentController::class, 'index'])->name('payments.index');
@@ -74,6 +87,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/dashboard', [DoctorDashboardController::class, 'index'])->name('dashboard');
     });
 
+    // The pipe means either admin role is accepted by the role middleware.
     Route::middleware('role:admin|super-admin')->prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     });

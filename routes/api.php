@@ -20,6 +20,11 @@ use App\Http\Controllers\Api\V1\SslCommerzPaymentController;
 use App\Http\Controllers\Api\V1\SupportController;
 use Illuminate\Support\Facades\Route;
 
+// API routes return data (normally JSON) for the React frontend or external services.
+// Laravel automatically places this file under /api, while the project configuration
+// supplies the version prefix used by frontend requests.
+
+// Lightweight endpoint used to confirm that the backend API is running.
 Route::get('health', function () {
     return response()->json([
         'status' => 'ok',
@@ -27,6 +32,8 @@ Route::get('health', function () {
     ]);
 });
 
+// Public authentication endpoints. defaults('role', ...) tells one controller method
+// which type of account is being authenticated without duplicating controller logic.
 Route::post('login', [AuthController::class, 'login'])->name('api.v1.login');
 Route::post('patient/login', [AuthController::class, 'login'])->defaults('role', 'patient');
 Route::post('patient/register', [AuthController::class, 'register'])->defaults('role', 'patient');
@@ -35,6 +42,8 @@ Route::post('doctor/register', [AuthController::class, 'register'])->defaults('r
 Route::post('admin/login', [AuthController::class, 'login'])->defaults('role', 'admin');
 Route::post('patient/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('patient/reset-password', [AuthController::class, 'resetPassword']);
+
+// Public doctor discovery and booking-information endpoints do not require login.
 Route::get('doctor/search', [DoctorController::class, 'search']);
 Route::get('doctor/public/{doctorId}', [DoctorController::class, 'show']);
 Route::get('doctor-images/{filename}', [DoctorController::class, 'image']);
@@ -46,7 +55,7 @@ Route::get('appointment/available-dates', [AppointmentController::class, 'availa
 Route::get('appointment/available-slots', [AppointmentController::class, 'availableSlots']);
 Route::post('contact/messages', [SupportController::class, 'storeContactMessage'])->middleware('throttle:10,1');
 
-// Settings (public)
+// Public settings provide frontend content such as pages and safely exposed assets.
 Route::get('settings', [SettingsController::class, 'publicIndex']);
 Route::get('settings/page/{slug}', [SettingsController::class, 'page']);
 Route::get('settings/asset/{filename}', [SettingsController::class, 'asset']);
@@ -59,7 +68,9 @@ Route::prefix('payments/sslcommerz')->group(function (): void {
     Route::post('ipn', [SslCommerzPaymentController::class, 'ipn']);
 });
 
+// auth:sanctum requires a valid signed-in API session/token for every nested route.
 Route::middleware('auth:sanctum')->group(function (): void {
+    // Shared account/profile routes available after authentication.
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
     Route::get('profile', [ProfileController::class, 'show']);
@@ -75,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('payments/{payment}', [PaymentController::class, 'show'])->whereNumber('payment');
     Route::get('medical-records', [MedicalRecordController::class, 'index'])->middleware('role:patient|doctor|admin|super-admin');
 
+    // Administrative APIs. The role middleware blocks patients and doctors from this group.
     Route::middleware('role:admin|super-admin')->group(function (): void {
         Route::get('admin/dashboard', [DashboardController::class, 'admin']);
         Route::get('admin/data', [AdminController::class, 'data']);
@@ -98,6 +110,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::patch('admin/notifications/read-all', [AdminNotificationController::class, 'markAllRead']);
         Route::patch('admin/notifications/{notificationId}/read', [AdminNotificationController::class, 'markRead']);
         Route::delete('admin/notifications/{notificationId}', [AdminNotificationController::class, 'destroy']);
+        // Access-control changes require both an admin role and the manage-roles permission.
         Route::prefix('admin/access-control')->middleware('permission:manage-roles')->group(function (): void {
             Route::get('/', [RolePermissionController::class, 'index']);
             Route::get('users', [RolePermissionController::class, 'users']);
@@ -114,20 +127,21 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::put('admin/doctors/{doctorId}', [DoctorController::class, 'adminUpdate']);
         Route::delete('admin/doctors/{doctorId}', [DoctorController::class, 'adminDestroy']);
 
-        // Settings (admin)
+        // Admin settings routes create and maintain configuration records.
         Route::get('admin/settings', [SettingsController::class, 'index']);
         Route::post('admin/settings', [SettingsController::class, 'store']);
         Route::put('admin/settings/{settingId}', [SettingsController::class, 'update']);
         Route::put('admin/settings/{settingId}/toggle', [SettingsController::class, 'toggle']);
         Route::delete('admin/settings/{settingId}', [SettingsController::class, 'destroy']);
 
-        // Admin Commission Management
+        // Commission management controls default and doctor-specific earning percentages.
         Route::get('admin/commission', [AdminCommissionController::class, 'index']);
         Route::put('admin/commission/defaults', [AdminCommissionController::class, 'updateDefaults']);
         Route::put('admin/commission/doctors/{doctorId}', [AdminCommissionController::class, 'updateDoctor'])->whereNumber('doctorId');
         Route::delete('admin/commission/doctors/{doctorId}', [AdminCommissionController::class, 'removeDoctorPercentage'])->whereNumber('doctorId');
     });
 
+    // Doctors manage consultation records; administrators can also access these endpoints.
     Route::middleware('role:doctor|admin|super-admin')->group(function (): void {
         Route::get('doctor/dashboard', [DashboardController::class, 'doctor']);
         Route::post('consultations/{appointmentId}/notes', [MedicalRecordController::class, 'storeNote']);
@@ -135,7 +149,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('consultations/{appointmentId}/documents', [MedicalRecordController::class, 'storeDocument']);
         Route::post('appointment/decision', [AppointmentController::class, 'decision']);
 
-        // Doctor Earnings
+        // Doctor earning endpoints expose summaries, history, trends, and balances.
         Route::get('doctor/earnings/summary', [DoctorEarningController::class, 'summary']);
         Route::get('doctor/earnings/history', [DoctorEarningController::class, 'history']);
         Route::get('doctor/earnings/trend', [DoctorEarningController::class, 'trend']);
@@ -143,6 +157,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('doctor/earnings/{earningId}', [DoctorEarningController::class, 'show'])->whereNumber('earningId');
     });
 
+    // Patients create and manage appointments; administrators retain support access.
     Route::middleware('role:patient|admin|super-admin')->group(function (): void {
         Route::get('patient/dashboard', [DashboardController::class, 'patient']);
         Route::match(['put', 'patch'], 'patient/me', [AuthController::class, 'updateMe'])->middleware('role:patient');
@@ -152,6 +167,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         Route::post('appointment/{appointmentId}/payment', [AppointmentController::class, 'payment']);
 
+        // Laravel injects the matching Appointment model for the {appointment} parameter.
         Route::delete(
             '/appointments/{appointment}',
             [AppointmentController::class, 'destroy']
@@ -161,7 +177,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('appointment/reschedule-slots', [AppointmentController::class, 'rescheduleSlots']);
         Route::post('appointment/reschedule', [AppointmentController::class, 'reschedule']);
 
-        // SSLCommerz initiation and payment data require authentication.
+        // SSLCommerz initiation and private payment data require authentication.
         Route::get('appointments/{appointmentId}/payment-details', [SslCommerzPaymentController::class, 'paymentDetails']);
         Route::get('appointments/{appointmentId}/refund-status', [SslCommerzPaymentController::class, 'refundStatus']);
         Route::get('appointments/{appointmentId}/example-hosted-checkout', [SslCommerzPaymentController::class, 'exampleHostedCheckout']);

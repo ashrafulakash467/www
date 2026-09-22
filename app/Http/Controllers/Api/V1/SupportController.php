@@ -9,10 +9,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/** Receive public contact messages and expose support queues to administrators. */
+/** Frontend mental model: submitted forms become database rows, then admin list responses. */
 class SupportController extends Controller
 {
+    /** Validate and store a public contact form submission. */
     public function storeContactMessage(Request $request): JsonResponse
     {
+        // validate() returns clean fields or an HTTP 422 errors object for the form.
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
@@ -21,6 +25,7 @@ class SupportController extends Controller
             'message' => ['required', 'string', 'max:5000'],
         ]);
 
+        // create() inserts one row using only validated values.
         ContactMessage::query()->create($data);
 
         return response()->json([
@@ -29,8 +34,10 @@ class SupportController extends Controller
         ], 201);
     }
 
+    /** Search and paginate contact messages for support administrators. */
     public function contactMessages(Request $request): JsonResponse
     {
+        // Build the query from the admin table's search and status controls.
         $query = ContactMessage::query();
         $search = trim($request->string('search')->toString());
 
@@ -46,6 +53,7 @@ class SupportController extends Controller
         if ($request->filled('from')) $query->whereDate('created_at', '>=', $request->input('from'));
         if ($request->filled('to')) $query->whereDate('created_at', '<=', $request->input('to'));
 
+        // Server pagination returns a bounded page plus metadata for the frontend.
         $messages = $query->latest()->paginate(min(max($request->integer('per_page', 20), 1), 100));
 
         return response()->json([
@@ -70,10 +78,12 @@ class SupportController extends Controller
         ]);
     }
 
+    /** List pending cancellation and reschedule requests for support review. */
     public function appointmentRequests(Request $request): JsonResponse
     {
         $type = $request->string('type')->lower()->toString();
         $status = $type === 'reschedule' ? 'reschedule_requested' : 'cancellation_requested';
+        // Eager-loaded relationships supply nested patient, doctor, and payment data.
         $query = Appointment::query()->with(['patient.user', 'doctor.user', 'payment'])->where('status', $status);
         $search = trim($request->string('search')->toString());
 
@@ -101,6 +111,7 @@ class SupportController extends Controller
         ]);
     }
 
+    /** Format an appointment change request with patient, doctor, and payment context. */
     private function formatRequest(Appointment $appointment): array
     {
         $change = $appointment->meta['patient_change_request'] ?? [];

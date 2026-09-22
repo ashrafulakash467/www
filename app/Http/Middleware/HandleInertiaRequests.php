@@ -5,10 +5,12 @@ namespace App\Http\Middleware;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
+/** Share authentication and flash-message data with every Inertia response. */
 class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
 
+    /** Merge global authentication and flash data into every Inertia response. */
     public function share(Request $request): array
     {
         $user = $request->user();

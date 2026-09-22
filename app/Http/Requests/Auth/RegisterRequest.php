@@ -5,10 +5,13 @@ namespace App\Http\Requests\Auth;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
+/** Normalize and validate fields shared by patient and doctor registration. */
 class RegisterRequest extends FormRequest
 {
+    /** Normalize frontend field names before Laravel runs validation. */
     protected function prepareForValidation(): void
     {
+        // Accept the frontend's confirmPassword field using Laravel's conventional name.
         $this->merge([
             'password_confirmation' => $this->input('password_confirmation', $this->input('confirmPassword')),
         ]);

@@ -7,8 +7,10 @@ use App\Models\User;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/** Build the public home page with a limited selection of database-backed doctors. */
 class HomeController extends Controller
 {
+    /** Render the home page with a small database-backed doctor selection. */
     public function index(): Response
     {
         $doctors = Doctor::query()

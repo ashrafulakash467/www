@@ -12,18 +12,28 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
+/**
+ * Exercise the main application boundaries: Inertia pages, sessions, role middleware,
+ * public booking discovery, authenticated booking, and slot-capacity protection.
+ */
 class HealthcareArchitectureTest extends TestCase
 {
+    // RefreshDatabase gives every test an isolated schema and clean records.
     use RefreshDatabase;
 
+    /** Prepare the roles and permissions required by all tests in this class. */
     protected function setUp(): void
     {
+        // Always boot Laravel's normal test setup before adding class-specific fixtures.
         parent::setUp();
+        // A seeder is comparable to a reusable frontend test fixture with default data.
         $this->seed(AccessControlSeeder::class);
     }
 
+    /** Verify public routes select the expected React/Inertia page components. */
     public function test_public_pages_render_through_inertia(): void
     {
+        // assertInertia inspects the component name and props, not rendered browser HTML.
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Home/Index'));
@@ -35,6 +45,7 @@ class HealthcareArchitectureTest extends TestCase
 
     public function test_guests_can_review_booking_details_but_cannot_book(): void
     {
+        // Arrange a complete doctor -> schedule -> slot graph required by booking endpoints.
         $doctorUser = User::factory()->create(['role' => 'doctor', 'status' => 'active']);
         $doctorUser->assignRole('doctor');
         $doctor = Doctor::create([
@@ -55,6 +66,7 @@ class HealthcareArchitectureTest extends TestCase
             'is_active' => true,
             'status' => 'active',
         ]);
+        // A future date keeps the generated slot valid regardless of when the test runs.
         $date = now()->addDay()->toDateString();
         AppointmentSlot::create([
             'doctor_schedule_id' => $schedule->id,
@@ -68,6 +80,7 @@ class HealthcareArchitectureTest extends TestCase
             'status' => 'available',
         ]);
 
+        // Guests may render the page and access read-only availability endpoints.
         $this->get("/appointment/book?doctorId={$doctor->id}")
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Appointments/Book'));
@@ -84,6 +97,7 @@ class HealthcareArchitectureTest extends TestCase
             ->assertOk()
             ->assertJsonPath('slots.0.time', '09:00 AM');
 
+        // The mutation endpoint remains protected and must reject an unauthenticated guest.
         $this->postJson('/api/v1/appointment/book', [
             'doctorId' => $doctor->id,
             'appointmentDate' => $date,
@@ -93,6 +107,7 @@ class HealthcareArchitectureTest extends TestCase
 
     public function test_login_uses_a_server_side_session_and_redirects_by_role(): void
     {
+        // Arrange an active patient whose password can be submitted through the login endpoint.
         $patient = User::factory()->create([
             'email' => 'patient@example.test',
             'password' => 'Password123!',
@@ -101,6 +116,7 @@ class HealthcareArchitectureTest extends TestCase
         ]);
         $patient->assignRole('patient');
 
+        // postJson simulates the fetch request made by the React login form.
         $this->postJson('/login', [
             'identifier' => 'patient@example.test',
             'password' => 'Password123!',
@@ -108,11 +124,13 @@ class HealthcareArchitectureTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('token', 'session');
 
+        // This proves Laravel stored the user in the session, beyond returning success JSON.
         $this->assertAuthenticatedAs($patient);
     }
 
     public function test_role_middleware_isolates_dashboards(): void
     {
+        // actingAs keeps this patient authenticated for the chained route checks below.
         $patient = User::factory()->create(['role' => 'patient', 'status' => 'active']);
         $patient->assignRole('patient');
 
@@ -156,12 +174,14 @@ class HealthcareArchitectureTest extends TestCase
             ->get('/patient/dashboard?tab=records')
             ->assertRedirect('/patient/medical-records');
 
+        // Hidden frontend links are not security; middleware must return HTTP 403 server-side.
         $this->actingAs($patient)->get('/admin/dashboard')->assertForbidden();
         $this->actingAs($patient)->get('/doctor/dashboard')->assertForbidden();
     }
 
     public function test_an_appointment_slot_cannot_be_double_booked(): void
     {
+        // Arrange one slot with capacity one and two different authenticated patients.
         $doctorUser = User::factory()->create(['role' => 'doctor', 'status' => 'active']);
         $doctorUser->assignRole('doctor');
         $doctor = Doctor::create([
@@ -203,15 +223,18 @@ class HealthcareArchitectureTest extends TestCase
             'slotTime' => '09:00 AM',
         ];
 
+        // First booking succeeds; the identical second request must fail with HTTP 422.
         $this->actingAs($first)->postJson('/api/v1/appointments', $payload)->assertCreated();
         $this->actingAs($second)->postJson('/api/v1/appointments', $payload)
             ->assertUnprocessable()
             ->assertJsonPath('success', false);
 
+        // Verify the database invariant, not only the two API responses.
         $this->assertDatabaseCount('appointments', 1);
         $this->assertSame(1, $slot->fresh()->booked_count);
     }
 
+    /** Build a reusable patient account/profile fixture for booking tests. */
     private function patientUser(string $email): User
     {
         $user = User::factory()->create([

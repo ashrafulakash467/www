@@ -10,6 +10,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
+/** Expose public settings and protected configuration-management operations. */
+/** Frontend mental model: settings are key/value state stored in the database instead of JavaScript. */
 class SettingsController extends Controller
 {
     /**
@@ -18,6 +20,7 @@ class SettingsController extends Controller
      */
     public function publicIndex(): JsonResponse
     {
+        // publicMap returns active, non-private settings as a frontend-friendly object.
         return response()->json([
             'settings' => Setting::publicMap(),
             'meta' => [
@@ -32,6 +35,7 @@ class SettingsController extends Controller
      */
     public function page(string $slug): JsonResponse
     {
+        // collect() enables chainable filtering similar to JavaScript array utilities.
         $policy = collect(Setting::publicMap())
             ->filter(fn ($value, string $key) => str_starts_with($key, 'policy:'))
             ->filter(fn ($value, string $key) => $value === $slug)
@@ -97,6 +101,7 @@ class SettingsController extends Controller
      */
     public function store(StoreSettingRequest $request): JsonResponse
     {
+        // The FormRequest has already validated types and administrator input.
         $data = $request->validated();
 
         $setting = Setting::create([
@@ -111,6 +116,7 @@ class SettingsController extends Controller
             'is_private' => (bool) ($data['is_private'] ?? false),
         ]);
 
+        // Settings are cached, so writes invalidate the cache for future reads.
         Setting::forgetAllCaches();
 
         return response()->json([
@@ -129,6 +135,7 @@ class SettingsController extends Controller
 
         $data = $request->validated();
 
+        // Image settings use multipart uploads; ordinary settings remain text values.
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             $filename = Str::slug($setting->key).'-'.time().'.'.$file->getClientOriginalExtension();
@@ -197,6 +204,7 @@ class SettingsController extends Controller
      */
     public function asset(string $filename): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse
     {
+        // basename removes directory traversal segments before building a local path.
         $filename = basename($filename);
         $path = storage_path('app/public/settings/'.$filename);
 
@@ -207,6 +215,7 @@ class SettingsController extends Controller
         return response()->file($path);
     }
 
+    /** Convert a typed setting into the consistent admin API representation. */
     private function formatSetting(Setting $setting): array
     {
         return [

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken as Middleware;
 
+/** Configure CSRF-cookie behavior and explicitly exempt gateway callback endpoints. */
 class VerifyCsrfToken extends Middleware
 {
     /**

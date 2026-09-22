@@ -13,27 +13,35 @@ use App\Services\EarningService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/** Verify commission calculations, refunds, balances, authorization, and earning ownership. */
 class EarningSystemTest extends TestCase
 {
+    // Every test receives a clean migrated database instead of using local development data.
     use RefreshDatabase;
 
+    // Store the resolved service like a shared dependency in a frontend describe block.
     private EarningService $earnings;
 
+    /** Prepare the service and default commission fixtures before every test method. */
     protected function setUp(): void
     {
         parent::setUp();
+        // app() resolves the real service from Laravel's dependency-injection container.
         $this->earnings = app(EarningService::class);
         $this->seedCommissionSettings();
     }
 
+    /** Confirm seeded platform defaults are read as an 80/20 split. */
     public function test_default_percentages_are_80_20()
     {
         $this->assertEquals(80.0, $this->earnings->getDefaultDoctorPercentage());
         $this->assertEquals(20.0, $this->earnings->getDefaultAdminPercentage());
     }
 
+    /** Confirm a BDT 1,000 payment produces the expected doctor/admin amounts. */
     public function test_1000_payment_splits_800_200()
     {
+        // Arrange a paid transaction, then act by asking the service to create its earning.
         $payment = $this->createPaidPayment(1000);
         $earning = $this->earnings->createEarningFromPayment($payment);
         $this->assertNotNull($earning);
@@ -44,6 +52,7 @@ class EarningSystemTest extends TestCase
         $this->assertEquals(200.0, $earning->admin_amount);
     }
 
+    /** Confirm a doctor-specific percentage overrides the global default. */
     public function test_custom_doctor_percentage_is_used()
     {
         $doctor = $this->createDoctorWithPercentage(75);
@@ -55,12 +64,14 @@ class EarningSystemTest extends TestCase
         $this->assertEquals(250.0, $earning->admin_amount);
     }
 
+    /** Confirm existing earning snapshots do not change when future defaults change. */
     public function test_changing_default_does_not_affect_old_earnings()
     {
         $payment1 = $this->createPaidPayment(1000);
         $earning1 = $this->earnings->createEarningFromPayment($payment1);
         Setting::query()->where('key', 'commission.default_doctor_percentage')->update(['value' => '70']);
         Setting::query()->where('key', 'commission.default_admin_percentage')->update(['value' => '30']);
+        // Clear the settings cache so the service reads the newly stored defaults.
         Setting::forgetAllCaches();
         $payment2 = $this->createPaidPayment(1000);
         $earning2 = $this->earnings->createEarningFromPayment($payment2);
@@ -68,6 +79,7 @@ class EarningSystemTest extends TestCase
         $this->assertEquals(70.0, $earning2->doctor_percentage);
     }
 
+    /** Confirm repeated gateway callbacks cannot create duplicate earning rows. */
     public function test_duplicate_payment_creates_only_one_earning()
     {
         $payment = $this->createPaidPayment(1000);
@@ -77,6 +89,7 @@ class EarningSystemTest extends TestCase
         $this->assertEquals(1, EarningTransaction::where('payment_id', $payment->id)->count());
     }
 
+    /** Confirm a full refund reverses the complete doctor share. */
     public function test_full_refund_reverses_earning_correctly()
     {
         $payment = $this->createPaidPayment(1000);
@@ -86,6 +99,7 @@ class EarningSystemTest extends TestCase
         $this->assertEquals(800.0, $reversed->reversal_amount);
     }
 
+    /** Confirm a partial refund reverses the doctor share proportionally. */
     public function test_partial_refund_reverses_proportionally()
     {
         $payment = $this->createPaidPayment(1000);
@@ -95,6 +109,7 @@ class EarningSystemTest extends TestCase
         $this->assertEquals(400.0, $reversed->reversal_amount);
     }
 
+    /** Confirm available balance excludes amounts reversed by refunds. */
     public function test_available_balance_calculation()
     {
         $this->createPaidPayment(1000);
@@ -105,8 +120,10 @@ class EarningSystemTest extends TestCase
         $this->assertEquals(800.0, $balance);
     }
 
+    /** Confirm the commission API rejects percentages whose total is not 100. */
     public function test_admin_api_rejects_invalid_percentage()
     {
+        // actingAs gives the following request an authenticated Laravel session.
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $response = $this->actingAs($admin)->putJson('/api/v1/admin/commission/defaults', [
@@ -116,6 +133,7 @@ class EarningSystemTest extends TestCase
         $response->assertStatus(422);
     }
 
+    /** Confirm a doctor role cannot access administrator commission endpoints. */
     public function test_non_admin_cannot_access_commission_api()
     {
         $user = User::factory()->create();
@@ -124,6 +142,7 @@ class EarningSystemTest extends TestCase
         $response->assertStatus(403);
     }
 
+    /** Confirm earning summaries are scoped to the authenticated doctor. */
     public function test_doctor_can_only_see_own_earnings()
     {
         $doctor1 = $this->createDoctorWithUser();
@@ -137,6 +156,7 @@ class EarningSystemTest extends TestCase
         $this->assertEquals(800.0, $response->json('data.total_earnings'));
     }
 
+    /** Insert the private settings used as defaults by EarningService. */
     private function seedCommissionSettings(): void
     {
         Setting::create([
@@ -160,8 +180,10 @@ class EarningSystemTest extends TestCase
         Setting::forgetAllCaches();
     }
 
+    /** Build the complete patient, appointment, and paid-payment fixture used by calculations. */
     private function createPaidPayment(float $amount, ?Doctor $doctor = null): Payment
     {
+        // Reuse a supplied doctor or create one when the test does not care which doctor is used.
         $doctor = $doctor ?? $this->createDoctorWithUser();
         $patient = $this->createPatient();
 
@@ -195,6 +217,7 @@ class EarningSystemTest extends TestCase
         ]);
     }
 
+    /** Create a valid approved doctor together with its required User account. */
     private function createDoctorWithUser(): Doctor
     {
         $user = User::factory()->create();
@@ -207,6 +230,7 @@ class EarningSystemTest extends TestCase
         ]);
     }
 
+    /** Create a doctor whose custom commission is already effective. */
     private function createDoctorWithPercentage(float $percentage): Doctor
     {
         $doctor = $this->createDoctorWithUser();
@@ -217,6 +241,7 @@ class EarningSystemTest extends TestCase
         return $doctor;
     }
 
+    /** Create a valid patient together with its required User account. */
     private function createPatient(): Patient
     {
         $user = User::factory()->create();
@@ -228,4 +253,3 @@ class EarningSystemTest extends TestCase
         ]);
     }
 }
-
